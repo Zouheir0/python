@@ -35,8 +35,8 @@ privileges, _ = psql("""SELECT
   (NOT has_table_privilege('anon','public.profiles','SELECT')) AND
   (NOT has_column_privilege('authenticated','public.profiles','xp','UPDATE')) AND
   has_table_privilege('anon','public.leaderboard','SELECT') AND
-  (NOT has_function_privilege('anon','public.complete_lesson(text,text)','EXECUTE')) AND
-  has_function_privilege('authenticated','public.complete_lesson(text,text)','EXECUTE');""")
+  (NOT has_function_privilege('anon','public.complete_lesson(text,text,boolean)','EXECUTE')) AND
+  has_function_privilege('authenticated','public.complete_lesson(text,text,boolean)','EXECUTE');""")
 assert privileges == "t", f"Unexpected role permissions: {privileges}"
 a = "11111111-1111-4111-8111-111111111111"
 b = "22222222-2222-4222-8222-222222222222"
@@ -51,11 +51,14 @@ profile_json = __import__('json').loads(profile)
 assert profile_json['id'] == a and profile_json['username'] == 'renamed_student' and profile_json['xp'] == 0 and profile_json['leaderboard_public'] is True, f'Profile save failed: {profile_json}'
 rpc, _ = psql(f"""SET ROLE authenticated;
 SET request.jwt.claim.sub = '{a}';
-SELECT public.complete_lesson('c01-l01','I wrote my first line!')->>'awarded';
-SELECT public.complete_lesson('c01-l01','I wrote my first line!')->>'awarded';
+SELECT public.complete_lesson('c01-l01','I wrote my first line!',true)->>'awarded';
 SELECT xp FROM public.profiles WHERE id = '{a}';
+SELECT public.complete_lesson('c01-l01','I wrote my first line!',false)->>'upgraded';
+SELECT xp FROM public.profiles WHERE id = '{a}';
+SELECT public.complete_lesson('c01-l01','I wrote my first line!',false)->>'awarded';
+SELECT xp_awarded::text || ':' || solution_used::text FROM public.lesson_completions WHERE user_id = '{a}' AND lesson_id = 'c01-l01';
 RESET ROLE;""")
-assert rpc.splitlines() == ["true", "false", "15"], f"RPC double-award test failed: {rpc}"
+assert rpc.splitlines() == ["true", "8", "true", "15", "false", "15:false"], f"Assisted XP / upgrade test failed: {rpc}"
 own_data, _ = psql(f"""SET ROLE authenticated;
 SET request.jwt.claim.sub = '{a}';
 SELECT count(*) FROM public.profiles;
@@ -72,4 +75,5 @@ print("PASS: schema applies and re-runs cleanly; 68 seeds present")
 print("PASS: RLS isolates accounts; public leaderboard reveals only opted-in usernames")
 print("PASS: profile-save RPC safely updates the signed-in student's profile without accepting XP")
 print("PASS: browser roles cannot update XP or call XP RPC anonymously")
-print("PASS: correct challenge awards XP once; incorrect output is rejected")
+print("PASS: assisted solution earns half XP, a later independent solve earns the rest, and XP cannot be duplicated")
+print("PASS: incorrect challenge output is rejected")
