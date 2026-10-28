@@ -64,7 +64,7 @@ def main():
                 assert "Python Path" in page.title()
                 page.locator('button[data-action="open-activity"]').first.click()
                 page.get_by_role("button", name="Run example").click()
-                wait_for_text(page.locator("#example-console"), "I wrote my first line!")
+                wait_for_text(page.locator("#example-console"), "Hello, world!")
                 page.locator('button.nav-button[data-view="sandbox"]').click()
                 page.locator("#sandbox-code").fill("print(2 + 5)")
                 page.locator('button[data-action="sandbox-run"]').click()
