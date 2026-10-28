@@ -457,6 +457,13 @@ async function submitAuth(form) {
   if(password.length<10){showAccountMessage('Use a password with at least 10 characters.','bad');return;}
   try {
     if(state.accountTab==='signup') {
+      // Creating another account is an explicit identity change. Do not keep a prior session active.
+      if (state.user) {
+        const { error: signOutError } = await state.supabase.auth.signOut();
+        if (signOutError) throw signOutError;
+        state.user = null; state.session = null; state.profile = null; state.cloudCompleted = new Set(); state.backendError = '';
+        updateHeaderStats();
+      }
       const username=String(fd.get('username')||'').trim().toLowerCase();
       if(!validUsername(username)){showAccountMessage('Username must be 3 to 20 letters, numbers, or underscores.','bad');return;}
       const {data,error}=await state.supabase.auth.signUp({email,password,options:{data:{username,leaderboard_public:$('#leaderboard-opt-in')?.checked===true},emailRedirectTo:window.location.href.split('#')[0]}});
