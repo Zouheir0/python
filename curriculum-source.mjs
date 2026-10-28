@@ -104,6 +104,440 @@ L('c16-l03','Make a simple class','A class describes a kind of object. An object
 P('c16-p16','Project: Pet simulator','Use a class to store a pet’s name and happiness, then change its happiness with a method.','The object keeps both the pet’s details and actions it can perform.',`class Pet:\n    def __init__(self, name):\n        self.name = name\n        self.happiness = 0\n    def play(self):\n        self.happiness += 1\npet = Pet("Milo")\npet.play()\nprint(f"{pet.name}: {pet.happiness}")`,'Milo: 1','Create pet Luna, play twice, and print Luna: 2.',`class Pet:\n    def __init__(self, name):\n        self.name = name\n        self.happiness = 0\n    def play(self):\n        self.happiness += 1\npet = Pet("Luna")\npet.play()\nprint(f"{pet.name}: {pet.happiness}")`,'Luna: 2','Call pet.play() a second time.',`class Pet:\n    def __init__(self, name):\n        self.name = name\n        self.happiness = 0\n    def play(self):\n        self.happiness += 1\npet = Pet("Luna")\npet.play()\npet.play()\nprint(f"{pet.name}: {pet.happiness}")`)
 ]}
 ];
-for (const chapter of chapters) for (const item of chapter.activities) { item.chapter_id=chapter.id; item.chapter_title=chapter.title; item.example_output=String(item.example_output).replace(/\r\n/g,'\n').replace(/\n+$/,''); item.expected_output=String(item.expected_output).replace(/\r\n/g,'\n').replace(/\n+$/,''); }
+const chapterDescriptions = {
+  "c01": "Wake up Python by printing messages, spotting quotes, and making simple calculations.",
+  "c02": "Build a score counter by giving values names Python can remember and update.",
+  "c03": "Power a mini shop and game scoreboard with arithmetic, multiplication, and remainders.",
+  "c04": "Create player cards and messages with text tools and fill-in-the-blank f-strings.",
+  "c05": "Teach a program the difference between text and numbers, then convert between them.",
+  "c06": "Make tiny interactive programs that ask questions and respond to typed answers.",
+  "c07": "Give a game simple rules by comparing values and combining yes-or-no checks.",
+  "c08": "Make your program choose what happens next with if, elif, and else.",
+  "c09": "Build a playlist that stores, finds, adds, and sorts items.",
+  "c10": "Automate repetitive jobs with for loops, number ranges, and running totals.",
+  "c11": "Create reliable countdowns and learn how to stop loops safely.",
+  "c12": "Turn repeated instructions into reusable functions.",
+  "c13": "Build calculator functions that accept information and return answers.",
+  "c14": "Create player profiles with named keys and values.",
+  "c15": "Become a debugging detective and teach programs to handle expected mistakes.",
+  "c16": "Use Python's math toolbox, count patterns in data, and build a tiny pet object."
+};
+const activityOverrides = {
+  "c01-l01": {
+    "task": "You are waking up a tiny coding robot. Make it announce: I wrote my first line!"
+  },
+  "c01-l03": {
+    "concept": "Python pays attention to capital letters. Its built-in command is spelled print, all lowercase; Print is a different name and will not work.",
+    "analogy": "A capital letter is like changing one letter in a password: the spelling no longer matches.",
+    "example_code": "print(\"small letters work\")",
+    "example_output": "small letters work",
+    "task": "Fix the one-letter bug so the robot says exactly: Python notices capitals."
+  },
+  "c02-l02": {
+    "concept": "A variable name can use letters, digits, and underscores, but cannot start with a digit or contain spaces. Pick a clear label such as game_level, then spell it the same way every time.",
+    "analogy": "A useful variable name is a clear label. game_level tells you more than a mystery name like x."
+  },
+  "c02-p02": {
+    "title": "Quest: Power-up scorekeeper",
+    "concept": "A score is just a number stored under a name. Set the starting score, add the points you collect, and print the result. This quest uses variables and addition only.",
+    "analogy": "Your score is a game counter: each new batch of points gets added to the old total.",
+    "example_code": "score = 10\nscore = score + 5\nprint(score)",
+    "example_output": "15",
+    "task": "You start with 7 stars and collect 8 more. Make Python calculate and print your final total: 15.",
+    "starter_code": "score = 0\nscore = score + 0\nprint(score)",
+    "expected_output": "15",
+    "hint": "Set the starting score to 7, then add 8. The last line prints the number stored in score.",
+    "solution_code": "score = 7\nscore = score + 8\nprint(score)"
+  },
+  "c03-p03": {
+    "title": "Quest: Mini shop checkout",
+    "concept": "A checkout multiplies the number of items by the price of one item. Store each number in a variable, then print the total. We are practising math here; message formatting comes later.",
+    "analogy": "The till does the same calculation each time: quantity multiplied by price.",
+    "example_code": "apples = 3\napple_price = 2\nprint(apples * apple_price)",
+    "example_output": "6",
+    "task": "A game shop sells a badge for 4 coins. You buy 3 badges. Calculate the total and print 12.",
+    "starter_code": "quantity = 0\nprice = 4\nprint(quantity * price)",
+    "expected_output": "12",
+    "hint": "Set quantity to 3. Keep price at 4, then let * calculate the total.",
+    "solution_code": "quantity = 3\nprice = 4\nprint(quantity * price)"
+  },
+  "c04-p04": {
+    "title": "Quest: Make a player badge",
+    "task": "Create a badge that says Welcome, Rami! Level 2. Use the name and level variables so Python fills in the details."
+  },
+  "c05-p05": {
+    "title": "Quest: Age-up calculator"
+  },
+  "c06-p06": {
+    "title": "Quest: Snack shop order"
+  },
+  "c07-p07": {
+    "title": "Quest: Unlock the game"
+  },
+  "c08-p08": {
+    "title": "Quest: Choose your adventure"
+  },
+  "c09-p09": {
+    "title": "Quest: Playlist builder"
+  },
+  "c10-p10": {
+    "title": "Quest: Multiplication machine"
+  },
+  "c11-p11": {
+    "title": "Quest: Rocket countdown",
+    "example_code": "count = 3\nwhile count > 0:\n    print(count)\n    count = count - 1\nprint(\"Go!\")",
+    "starter_code": "count = 2\nwhile count > 0:\n    print(count)\n    count = count - 1\nprint(\"Go!\")",
+    "solution_code": "count = 4\nwhile count > 0:\n    print(count)\n    count = count - 1\nprint(\"Launch!\")"
+  },
+  "c12-p12": {
+    "title": "Quest: Level-up cheer"
+  },
+  "c13-p13": {
+    "title": "Quest: Discount calculator"
+  },
+  "c14-p14": {
+    "title": "Quest: Player profile",
+    "example_code": "player = {\"name\": \"Mia\", \"level\": 2}\nplayer[\"level\"] = 3\nname = player[\"name\"]\nlevel = player[\"level\"]\nprint(f\"{name} level {level}\")",
+    "example_output": "Mia level 3",
+    "task": "Build Kai's player profile at level 4, then print Kai level 4. Store the dictionary values in simple variables before building the message.",
+    "starter_code": "player = {\"name\": \"Kai\", \"level\": 1}\nname = player[\"name\"]\nlevel = player[\"level\"]\nprint(f\"{name} level {level}\")",
+    "expected_output": "Kai level 4",
+    "hint": "Set the dictionary level to 4. Read player[\"name\"] and player[\"level\"] into name and level, then use those names in the f-string.",
+    "solution_code": "player = {\"name\": \"Kai\", \"level\": 4}\nname = player[\"name\"]\nlevel = player[\"level\"]\nprint(f\"{name} level {level}\")"
+  },
+  "c15-p15": {
+    "title": "Quest: Safe number reader"
+  },
+  "c16-p16": {
+    "title": "Quest: Pet simulator",
+    "concept": "A class is the blueprint; each pet is an object made from it. __init__ sets up a new pet, self.name and self.happiness store that pet's details, and play() changes its happiness.",
+    "analogy": "Think of a pet object as a virtual pet card with its own name, happiness meter, and play button.",
+    "example_code": "class Pet:\n    def __init__(self, name):\n        self.name = name\n        self.happiness = 0\n    def play(self):\n        self.happiness = self.happiness + 1\npet = Pet(\"Milo\")\npet.play()\nprint(f\"{pet.name}: {pet.happiness}\")",
+    "example_output": "Milo: 1",
+    "task": "Create pet Luna, press its play action twice, and print Luna: 2.",
+    "starter_code": "class Pet:\n    def __init__(self, name):\n        self.name = name\n        self.happiness = 0\n    def play(self):\n        self.happiness = self.happiness + 1\npet = Pet(\"Luna\")\npet.play()\nprint(f\"{pet.name}: {pet.happiness}\")",
+    "expected_output": "Luna: 2",
+    "hint": "The pet starts at happiness 0. Each pet.play() adds 1, so call it one more time before printing.",
+    "solution_code": "class Pet:\n    def __init__(self, name):\n        self.name = name\n        self.happiness = 0\n    def play(self):\n        self.happiness = self.happiness + 1\npet = Pet(\"Luna\")\npet.play()\npet.play()\nprint(f\"{pet.name}: {pet.happiness}\")"
+  },
+  "c07-l02": {
+    "example_code": "ready = True\nprint(ready)",
+    "example_output": "True"
+  },
+  "c09-l04": {
+    "title": "Sort the scoreboard",
+    "concept": "sum(values) adds all the numbers. sorted(values) gives you a new list in order; it does not rearrange the original list.",
+    "analogy": "sum is the scoreboard total; sorted is the neat ranking list.",
+    "example_code": "scores = [3, 9, 4]\nprint(sum(scores))\nprint(sorted(scores))",
+    "example_output": "16\n[3, 4, 9]",
+    "task": "A scoreboard contains [2, 4, 6]. Print its total, then print the numbers in sorted order.",
+    "starter_code": "values = [6, 2, 4]\nprint(sum(values))\nprint(values)",
+    "expected_output": "12\n[2, 4, 6]",
+    "hint": "Keep the total line. In the second print, use sorted(values) instead of values.",
+    "solution_code": "values = [6, 2, 4]\nprint(sum(values))\nprint(sorted(values))"
+  },
+  "c10-l03": {
+    "starter_code": "total = 0\nfor value in [1, 2, 4]:\n    total = total + value\nprint(total)",
+    "expected_output": "6",
+    "hint": "The list should contain 1, 2, and 3. The loop adds each value into total, so the final print happens after the loop."
+  },
+  "c11-l02": {
+    "example_code": "count = 0\nwhile count < 3:\n    print(count)\n    count = count + 1",
+    "starter_code": "count = 0\nwhile count < 3:\n    print(count)",
+    "expected_output": "0\n1\n2",
+    "hint": "After printing, increase count with count = count + 1. That moves it toward 3 so the loop can stop.",
+    "solution_code": "count = 0\nwhile count < 3:\n    print(count)\n    count = count + 1"
+  },
+  "c16-l02": {
+    "example_code": "numbers = [2, 5, 8, 3]\ncount = 0\nfor number in numbers:\n    if number % 2 == 0:\n        count = count + 1\nprint(count)",
+    "starter_code": "numbers = [2, 8, 9, 1]\ncount = 0\nfor number in numbers:\n    if number > 2:\n        count = count + 1\nprint(count)",
+    "expected_output": "2",
+    "solution_code": "numbers = [2, 8, 9, 1]\ncount = 0\nfor number in numbers:\n    if number > 5:\n        count = count + 1\nprint(count)"
+  }
+};
+const walkthroughs = {
+  "c01-l01": [
+    "print(...) is the instruction that displays something. The parentheses hold what you want Python to show.",
+    "The quote marks wrap the exact text; the quote marks themselves do not appear in the output."
+  ],
+  "c01-l02": [
+    "Without quotes, 2 + 5 is a calculation, so Python prints 7.",
+    "With quotes, Python treats 2 + 5 as text and prints those characters instead."
+  ],
+  "c01-l03": [
+    "Python's built-in command is spelled print with a lowercase p.",
+    "Changing that p to P creates a different name, so Python cannot find the command."
+  ],
+  "c01-p01": [
+    "Each print(...) instruction writes one line, so three print calls make a three-line card.",
+    "Text goes inside quotes; the final number can be a calculation without quotes."
+  ],
+  "c02-l01": [
+    "stars = 5 stores the number 5 under the name stars.",
+    "print(stars) looks up the stored value. Do not put quotes around the variable name."
+  ],
+  "c02-l02": [
+    "The left side is the label; the right side is the value to remember.",
+    "Underscores can join words in a name, but spaces cannot. Use exactly the same spelling when you print it."
+  ],
+  "c02-l03": [
+    "The first line stores 10 in points.",
+    "The next line reads the old points value, adds 6, and stores the new total. That is why the result is 16."
+  ],
+  "c02-p02": [
+    "Set score to 7 first, then update it by adding 8 to the existing score.",
+    "print(score) displays the number. This quest sticks to variables and arithmetic; formatted messages are taught later."
+  ],
+  "c03-l01": [
+    "The + symbol adds, and the - symbol subtracts.",
+    "Each print(...) runs its calculation and displays the answer on a new line."
+  ],
+  "c03-l02": [
+    "Use * for multiplication; the keyboard letter x is not the multiplication operator.",
+    "The / symbol divides. Python may show the result as a decimal such as 5.0."
+  ],
+  "c03-l03": [
+    "Python follows the usual math order: multiplication happens before addition.",
+    "Parentheses make the part inside happen first, changing (6 + 2) * 3 to 24."
+  ],
+  "c03-l04": [
+    "// counts complete groups, while % gives what is left over.",
+    "23 divided into groups of 4 leaves a remainder of 3, so 23 % 4 is 3."
+  ],
+  "c03-p03": [
+    "quantity stores how many badges you buy, and price stores the price of one badge.",
+    "quantity * price calculates the full cost. Print the number first; formatted messages are taught in Chapter 4."
+  ],
+  "c04-l01": [
+    "Text in Python is called a string and sits between matching quote marks.",
+    "The characters inside the quotes—including spaces and punctuation—are printed exactly as written."
+  ],
+  "c04-l02": [
+    "The + operator joins strings together instead of adding their characters as numbers.",
+    "Python does not insert a space for you, so join in a string containing one space when you need it."
+  ],
+  "c04-l03": [
+    "A dot connects a string to a method, such as .upper() or .lower().",
+    "The method runs because of the parentheses and returns a changed version of the text."
+  ],
+  "c04-l04": [
+    "The f before the opening quote tells Python to fill in placeholders.",
+    "Put a variable inside curly braces, like {age}; Python replaces the braces with its current value."
+  ],
+  "c04-p04": [
+    "The f-string is the message template; {nickname} and {level} are fill-in-the-blank spots.",
+    "Keep the regular text and punctuation outside the braces, and the variable names inside them."
+  ],
+  "c05-l01": [
+    "12 is an int, 3.5 is a float, and \"12\" is a str (text).",
+    "type(value) asks Python what kind of value it is; the quotation marks change the type."
+  ],
+  "c05-l02": [
+    "Numeric text needs converting before it can be used for arithmetic. int(\"8\") makes the number 8.",
+    "Once it is a number, Python can add 2 to produce 10."
+  ],
+  "c05-l03": [
+    "str(level) turns the number into text.",
+    "The + operator can then join that text to another string such as \"Level \". This is one way to build a message."
+  ],
+  "c05-p05": [
+    "age_text starts as text, so int(age_text) converts it into a whole number.",
+    "The f-string inserts the result of age + 1 into the sentence."
+  ],
+  "c06-l01": [
+    "input(\"Name? \") pauses and collects the typed answer as text.",
+    "The answer is stored in name, and the f-string places that answer after Hello."
+  ],
+  "c06-l02": [
+    "input() always returns text—even when the person types digits.",
+    "int(input(...)) converts that text to a whole number before multiplication."
+  ],
+  "c06-l03": [
+    "float(input(...)) turns a typed decimal such as 3.5 into a number.",
+    "Adding 1.0 gives 4.5; use float for decimals and int for whole numbers."
+  ],
+  "c06-p06": [
+    "The first input stores the snack name; the second is converted to a number with int(...).",
+    "The f-string combines count and snack in one readable order message."
+  ],
+  "c07-l01": [
+    "A comparison such as 5 > 2 asks a yes-or-no question.",
+    "Python prints True when the comparison is correct and False when it is not."
+  ],
+  "c07-l02": [
+    "Boolean values are written exactly as True and False, with capital first letters.",
+    "Store the value in is_ready, then print the variable name without quotes."
+  ],
+  "c07-l03": [
+    "and is True only when both checks are True; or needs at least one True check.",
+    "not flips a Boolean answer. The checks can be combined into one rule."
+  ],
+  "c07-p07": [
+    "score >= 50 checks the points requirement; has_pass already stores True or False.",
+    "and makes both requirements necessary, so a player needs enough points and a pass."
+  ],
+  "c08-l01": [
+    "if checks the condition; the colon starts the block of instructions.",
+    "The indented print line belongs to the if and runs only when energy > 0 is True."
+  ],
+  "c08-l02": [
+    "The if branch runs when the condition is True; else covers every other case.",
+    "The % 2 == 0 check is True for an even number and False for an odd number."
+  ],
+  "c08-l03": [
+    "Python checks if first, then each elif in order, and stops at the first match.",
+    "Put the highest threshold first so 12 earns Silver, not Bronze."
+  ],
+  "c08-p08": [
+    "The first matching condition chooses the message for the player's health.",
+    "Order the checks from greater than 10, to greater than 0, then the final else for zero."
+  ],
+  "c09-l01": [
+    "Square brackets create a list, and commas separate its items.",
+    "print(numbers) displays the whole list, including the brackets."
+  ],
+  "c09-l02": [
+    "List positions, called indexes, start at 0 rather than 1.",
+    "So the second item is at index 1: animals[1]."
+  ],
+  "c09-l03": [
+    "append(\"sleep\") adds a new item to the end of the existing list.",
+    "len(tasks) counts the items. Print tasks when you want to inspect the list itself."
+  ],
+  "c09-l04": [
+    "sum(values) adds every number in the list.",
+    "sorted(values) returns a newly ordered list; print(values) keeps the original order, which is why the starter fails."
+  ],
+  "c09-p09": [
+    "The list stores songs in order, and append adds Stars at the end.",
+    "len(songs) counts all songs after the new one is added."
+  ],
+  "c10-l01": [
+    "The for line takes one item from the list at a time and stores it in number.",
+    "The indented print runs once per item, producing one output line for each number."
+  ],
+  "c10-l02": [
+    "range(1, 5) starts at 1 and stops before 5.",
+    "That means number takes 1, 2, 3, and 4, one value per loop turn."
+  ],
+  "c10-l03": [
+    "Start total at 0 before the loop begins.",
+    "Each loop turn adds one list value to total; print after the loop to see the final sum."
+  ],
+  "c10-p10": [
+    "range(1, 5) produces four loop values: 1, 2, 3, and 4.",
+    "Multiplying each value by 5 produces 5, 10, 15, and 20 without repeating four print lines."
+  ],
+  "c11-l01": [
+    "while repeats as long as count <= 2 remains True.",
+    "Adding 1 during each turn eventually makes the condition False, so the loop stops."
+  ],
+  "c11-l02": [
+    "The loop checks count < 3 before each turn.",
+    "Without count = count + 1, count stays 0 forever. Updating it lets the condition become False."
+  ],
+  "c11-l03": [
+    "break exits the loop completely; continue skips to the next turn.",
+    "Place the continue check before print so number 3 is skipped but 4 still prints."
+  ],
+  "c11-p11": [
+    "The countdown begins at 4, prints the current value, then subtracts 1.",
+    "When count reaches 0 the loop ends, and the final Launch! message prints afterward."
+  ],
+  "c12-l01": [
+    "def cheer(): defines a reusable set of instructions; it does not run the body yet.",
+    "The line cheer() calls the function, so Python enters the indented body and prints the message."
+  ],
+  "c12-l02": [
+    "The function body is written once under def clap():.",
+    "Each call clap() runs those instructions again, so two calls produce two messages."
+  ],
+  "c12-l03": [
+    "The colon ends the function header and starts its body.",
+    "Both print lines need the same four-space indentation to belong to start_game()."
+  ],
+  "c12-p12": [
+    "Write the cheer once inside level_up().",
+    "Call level_up() twice outside the indented block to get two lines without copying the message."
+  ],
+  "c13-l01": [
+    "name is a parameter: a placeholder filled when greet(...) is called.",
+    "greet(\"Noor\") passes Noor into that placeholder, and the f-string inserts it into the message."
+  ],
+  "c13-l02": [
+    "return number * 3 sends the calculated value back to whoever called triple().",
+    "print(triple(4)) displays the returned answer, 12."
+  ],
+  "c13-l03": [
+    "return sends a value back; print displays a value on the screen.",
+    "area(3, 4) should return width multiplied by height, and the outer print displays 12."
+  ],
+  "c13-p13": [
+    "discounted(price) receives the price when called.",
+    "Subtract 3 inside return so discounted(12) sends 9 back to print."
+  ],
+  "c14-l01": [
+    "A dictionary stores key-value pairs inside curly braces.",
+    "player[\"name\"] looks up the value attached to the key name."
+  ],
+  "c14-l02": [
+    "player[\"score\"] selects the value stored under score.",
+    "Assigning a new number to that same key replaces its old value."
+  ],
+  "c14-l03": [
+    "get(\"pet\", \"unknown\") checks for a pet key.",
+    "Because the key is missing, get returns the backup value unknown instead of raising a KeyError."
+  ],
+  "c14-p14": [
+    "The dictionary keeps related player details under name and level.",
+    "Read each value into a simple variable, then let the f-string build the final message."
+  ],
+  "c15-l01": [
+    "Read the last line of an error first; it gives the error type and a useful clue.",
+    "Dividing by zero raises ZeroDivisionError. Changing the divisor fixes this particular crash."
+  ],
+  "c15-l02": [
+    "points is the name that was created.",
+    "pointS has a capital S, so it is a different name. Use the exact same spelling."
+  ],
+  "c15-l03": [
+    "age is an integer, and \"Next year: \" is text; Python cannot join them directly with +.",
+    "Convert the number with str(...) or use an f-string once you know that pattern."
+  ],
+  "c15-l04": [
+    "Python tries the instructions inside try first.",
+    "If int(\"hello\") raises ValueError, Python jumps to the matching except block and prints a helpful message."
+  ],
+  "c15-p15": [
+    "int(\"oops\") cannot turn those letters into a number, so it raises ValueError.",
+    "The except ValueError block catches that expected problem and prints Invalid number instead of stopping the program."
+  ],
+  "c16-l01": [
+    "import math loads Python's math toolbox.",
+    "math.sqrt(144) asks that toolbox for the square root of 144, which is 12.0."
+  ],
+  "c16-l02": [
+    "The loop checks each number, and the if condition decides whether it matches.",
+    "Increase count only inside the matching branch, then print the final count after the loop."
+  ],
+  "c16-l03": [
+    "class Robot: defines a blueprint; bot = Robot() creates one object from it.",
+    "pass is a temporary placeholder because this first class has no instructions inside yet."
+  ],
+  "c16-p16": [
+    "__init__ runs when Pet(\"Luna\") creates the object and stores its name and starting happiness.",
+    "Each pet.play() call adds 1 to that pet's happiness. Call it twice before printing the final value."
+  ]
+};
+for (const chapter of chapters) {
+  chapter.desc = chapterDescriptions[chapter.id] || chapter.desc;
+  for (const item of chapter.activities) {
+    Object.assign(item, activityOverrides[item.id] || {});
+    item.walkthrough = walkthroughs[item.id] || [];
+    item.chapter_id = chapter.id; item.chapter_title = chapter.title;
+    item.example_output = String(item.example_output).replace(/\r\n/g, '\n').replace(/\n+$/g, '');
+    item.expected_output = String(item.expected_output).replace(/\r\n/g, '\n').replace(/\n+$/g, '');
+  }
+}
 fs.writeFileSync(new URL('./curriculum.json', import.meta.url), JSON.stringify({version:1,chapters}, null, 2));
 console.log(`Wrote ${chapters.length} chapters, ${chapters.reduce((n,c)=>n+c.activities.length,0)} coding activities.`);
