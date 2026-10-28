@@ -1,5 +1,4 @@
-// These two values identify your Supabase project. The publishable/anon key is
-// designed for browser use when Row Level Security is correctly configured.
-// NEVER put a Supabase service_role key or secret key in this file.
+// Public browser configuration for this project. The publishable key is intended for client use.
+// Never put a Supabase secret or service_role key in this file.
 export const SUPABASE_URL = 'https://kdnhaoqtmfhtmeurflax.supabase.co';
 export const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_WQgkkXmH5RQgGbTF3Ci1ZQ_zQHI7PHn';
