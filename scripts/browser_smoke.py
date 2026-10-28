@@ -82,6 +82,16 @@ def main():
                 page.locator('button[data-action="check-code"]').click()
                 wait_for_text(page.locator("#challenge-feedback"), "already complete")
                 assert page.locator("#top-xp").inner_text().strip() == "15 XP", "Repeating must not award duplicate XP"
+                page.locator('button.nav-button[data-view="learn"]').click()
+                page.locator('button[data-action="open-chapter"][data-id="c06"]').click()
+                page.locator('button[data-action="open-activity"][data-id="c06-p17"]').click()
+                page.locator("#input-values").fill("1\nnot a number")
+                page.locator('button[data-action="toggle-solution"]').click()
+                page.locator('button[data-action="use-solution"]').click()
+                assert page.locator("#input-values").input_value() == "8\n2", "Using a solution must restore default sample inputs"
+                page.locator('button[data-action="check-code"]').click()
+                wait_for_text(page.locator("#challenge-feedback"), "20 of 40")
+                assert page.locator("#top-xp").inner_text().strip() == "35 XP", "Calculator solution must pass with its sample inputs and award half credit"
                 page.locator('button.nav-button[data-view="sandbox"]').click()
                 page.locator("#sandbox-code").fill("print(2 + 5)")
                 page.locator('button[data-action="sandbox-run"]').click()
@@ -108,7 +118,7 @@ def main():
                 page.locator('button.nav-button[data-view="leaderboard"]').click()
                 assert "Leaderboard" in page.locator("#app").inner_text()
                 assert not page_errors, f"Uncaught browser errors: {page_errors}"
-                print("PASS: guided lessons render; XP upgrades once, lesson review does not double-award XP; Python sandbox, errors, timeout recovery, and key views work")
+                print("PASS: print() then len() course order; using a solution restores sample inputs; calculator capstone solution passes; review does not double-award XP; sandbox and key views work")
             finally:
                 browser.close()
                 server.shutdown()

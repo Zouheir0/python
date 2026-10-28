@@ -5,6 +5,7 @@ const P=(id,title,c,a,ec,eo,t,sc,eo2,h,s,iv='')=>activity(id,title,'project',c,a
 const chapters = [
 { id:'c01',title:'Make Python talk',desc:'Start with output, quoted text, math, and the rules Python follows.',activities:[
 L('c01-l01','Your first print()','print() tells Python to show something on the screen. The parentheses hold what you want to show.','Think of print() as asking a tiny robot to say something out loud.',`print("Hello, world!")`,'Hello, world!','Make the screen say: I wrote my first line!',`print("change this")`,'I wrote my first line!','Replace the words inside the quotes. Keep the matching quote marks.',`print("I wrote my first line!")`),
+L('c01-l04','Count characters with len()','len(...) counts the characters in text and gives back a number. Spaces count as characters too.','len() is like a measuring tape for text: it tells you how many characters fit inside the quotes.',`print(len("cat"))\nprint(len("hello world"))`,'3\n11','Use len() to print how many characters are in the word Python.',`print(len("hi"))`,'6','len("Python") returns the number of characters. Put the text inside len(...), then print the result.',`print(len("Python"))`),
 L('c01-l02','Math or text?','Without quotes, Python can calculate 2 + 5. With quotes, "2 + 5" is text. Quotes tell Python not to do the math.','A math expression is a recipe to calculate. A string is a note containing characters that happen to look like math.',`print(2 + 5)\nprint("2 + 5")`,'7\n2 + 5','Change the code so it prints the answer 7, not the characters 2 + 5.',`print("2 + 5")`,'7','Remove the quotes around 2 + 5. Keep print and its parentheses.',`print(2 + 5)`),
 L('c01-l03','Capital letters matter','Python is case-sensitive. print and Print are different names. The built-in command is all lowercase: print. Names like score and Score can also be different.','Think of print and Print as two different passwords. One capital letter changes the spelling.',`print("small letters work")\nscore = 8\nScore = 2\nprint(score)\nprint(Score)`,'small letters work\n8\n2','Fix the code so it prints exactly: Python notices capitals.',`Print("Python notices capitals.")`,'Python notices capitals.','Use lowercase print. A capital P is not the same command.',`print("Python notices capitals.")`),
 P('c01-p01','Project: Intro card','Combine text and math in a tiny introduction. Each print makes a new line. Text needs quotes; math does not.','It is like a mini poster built one line at a time.',`print("Name: Lina")\nprint("Favorite subject: science")\nprint(2 + 5)`,'Name: Lina\nFavorite subject: science\n7','Make a three-line card: name Noor, subject Art, and the answer to 10 + 4.',`print("Name: ")\nprint("Favorite subject: ")\nprint(0)`,'Name: Noor\nFavorite subject: Art\n14','Fill the first two strings, then replace 0 with 10 + 4.',`print("Name: Noor")\nprint("Favorite subject: Art")\nprint(10 + 4)`)
@@ -39,7 +40,8 @@ P('c05-p05','Project: Age next year','Use a text value, convert it to a number, 
 L('c06-l01','input() reads what someone types','input() pauses and returns the answer as text. Save the answer in a variable to use it later.','The program asks a question and waits for the person to reply.',`name = input("Name? ")\nprint(f"Hello, {name}!")`,'Name? Maya\nHello, Maya!','Ask for a name and greet the person. Test input is Noor.',`name = input("Name? ")\nprint(name)`,'Name? Noor\nHello, Noor!','Keep the question and change the second line to an f-string greeting.',`name = input("Name? ")\nprint(f"Hello, {name}!")`,'Noor'),
 L('c06-l02','Convert input into a whole number','Input is text, even when the person types digits. Use int(input(...)) to read a whole number for calculations.','The user hands you a number written on paper; int() reads it as a number.',`age = int(input("Age? "))\nprint(age + 1)`,'Age? 14\n15','Ask for a number and print it multiplied by 2. Test input is 6.',`number = input("Number? ")\nprint(number)`,'Number? 6\n12','Wrap input in int(), then multiply by 2.',`number = int(input("Number? "))\nprint(number * 2)`,'6'),
 L('c06-l03','Use float() for decimal input','Use float(input(...)) when someone may enter a decimal such as 2.5. Use int() for whole numbers.','A measuring scale can include fractions, so decimals need float().',`price = float(input("Price? "))\nprint(price * 2)`,'Price? 2.5\n5.0','Read a decimal and add 1.0. Test input is 3.5.',`amount = float(input("Amount? "))\nprint(amount)`,'Amount? 3.5\n4.5','Convert the input to float, then add 1.0.',`amount = float(input("Amount? "))\nprint(amount + 1.0)`,'3.5'),
-P('c06-p06','Project: Snack order','Ask the person for a snack and how many they want, then show the order.','A simple order form asks for choices, stores them, then repeats them clearly.',`snack = input("Snack? ")\ncount = int(input("How many? "))\nprint(f"Order: {count} {snack}")`,'Snack? apple\nHow many? 3\nOrder: 3 apple','Make an order for 2 cookies. Use the provided two input lines.',`snack = input("Snack? ")\ncount = int(input("How many? "))\nprint("Order ready")`,'Snack? cookies\nHow many? 2\nOrder: 2 cookies','Use an f-string with both count and snack.',`snack = input("Snack? ")\ncount = int(input("How many? "))\nprint(f"Order: {count} {snack}")`,'cookies\n2')
+P('c06-p06','Project: Snack order','Ask the person for a snack and how many they want, then show the order.','A simple order form asks for choices, stores them, then repeats them clearly.',`snack = input("Snack? ")\ncount = int(input("How many? "))\nprint(f"Order: {count} {snack}")`,'Snack? apple\nHow many? 3\nOrder: 3 apple','Make an order for 2 cookies. Use the provided two input lines.',`snack = input("Snack? ")\ncount = int(input("How many? "))\nprint("Order ready")`,'Snack? cookies\nHow many? 2\nOrder: 2 cookies','Use an f-string with both count and snack.',`snack = input("Snack? ")\ncount = int(input("How many? "))\nprint(f"Order: {count} {snack}")`,'cookies\n2'),
+P('c06-p17','Capstone: Build your own calculator','Bring together input(), float(), variables, and arithmetic to calculate four results from two numbers.','A calculator reads two numbers, then applies each operation to those same values.',`first = float(input("First number: "))\nsecond = float(input("Second number: "))\nprint("Add:", first + second)\nprint("Subtract:", first - second)\nprint("Multiply:", first * second)\nprint("Divide:", first / second)`,'First number: 8\nSecond number: 2\nAdd: 10.0\nSubtract: 6.0\nMultiply: 16.0\nDivide: 4.0','Finish the calculator using two numbers. The starter code already shows addition; add the three remaining lines for subtraction, multiplication, and division. Use the sample inputs 8 and 2. Hints and a worked solution are available if you get stuck.',`first = float(input("First number: "))\nsecond = float(input("Second number: "))\nprint("Add:", first + second)\n# Add a print line for subtraction (-)\n# Add a print line for multiplication (*)\n# Add a print line for division (/)`,'First number: 8\nSecond number: 2\nAdd: 10.0\nSubtract: 6.0\nMultiply: 16.0\nDivide: 4.0','First, convert each input to a number with float(...). Then use +, -, *, and / in four print lines. Test with 8 and 2.',`first = float(input("First number: "))\nsecond = float(input("Second number: "))\nprint("Add:", first + second)\nprint("Subtract:", first - second)\nprint("Multiply:", first * second)\nprint("Divide:", first / second)`,'8\n2')
 ]},
 { id:'c07',title:'True or False checks',desc:'Compare values and combine yes-or-no answers with Boolean logic.',activities:[
 L('c07-l01','Comparisons answer a question','== checks whether values are equal. != checks whether they differ. <, >, <=, and >= compare sizes.','A comparison is like asking a yes-or-no question. Python answers with True or False.',`print(5 > 2)\nprint(5 == 2)`,'True\nFalse','Print whether 12 is at least 12.',`print(12 > 12)`,'True','Use >= because equal values count too.',`print(12 >= 12)`),
@@ -105,12 +107,12 @@ P('c16-p16','Project: Pet simulator','Use a class to store a pet’s name and ha
 ]}
 ];
 const chapterDescriptions = {
-  "c01": "Wake up Python by printing messages, spotting quotes, and making simple calculations.",
+  "c01": "Start with print(), count characters with len(), then learn the basics that power real programs.",
   "c02": "Build a score counter by giving values names Python can remember and update.",
   "c03": "Power a mini shop and game scoreboard with arithmetic, multiplication, and remainders.",
   "c04": "Create player cards and messages with text tools and fill-in-the-blank f-strings.",
   "c05": "Teach a program the difference between text and numbers, then convert between them.",
-  "c06": "Make tiny interactive programs that ask questions and respond to typed answers.",
+  "c06": "Read answers from a user, convert text to numbers, then combine everything in a calculator capstone.",
   "c07": "Give a game simple rules by comparing values and combining yes-or-no checks.",
   "c08": "Make your program choose what happens next with if, elif, and else.",
   "c09": "Build a playlist that stores, finds, adds, and sorts items.",
@@ -260,6 +262,10 @@ const walkthroughs = {
     "print(...) is the instruction that displays something. The parentheses hold what you want Python to show.",
     "The quote marks wrap the exact text; the quote marks themselves do not appear in the output."
   ],
+  "c01-l04": [
+    "len(\"Python\") counts each character inside the quote marks; the quote marks are not included.",
+    "print(...) displays the number returned by len(...), so the output is 6."
+  ],
   "c01-l02": [
     "Without quotes, 2 + 5 is a calculation, so Python prints 7.",
     "With quotes, Python treats 2 + 5 as text and prints those characters instead."
@@ -355,6 +361,11 @@ const walkthroughs = {
   "c06-l03": [
     "float(input(...)) turns a typed decimal such as 3.5 into a number.",
     "Adding 1.0 gives 4.5; use float for decimals and int for whole numbers."
+  ],
+  "c06-p17": [
+    "input(...) reads the characters typed by the learner; float(...) converts those characters into a number Python can calculate with.",
+    "Use the same two numeric variables for all four operations: + adds, - subtracts, * multiplies, and / divides.",
+    "Each print line includes a short label followed by the calculated result, which makes the calculator easy to read."
   ],
   "c06-p06": [
     "The first input stores the snack name; the second is converted to a number with int(...).",

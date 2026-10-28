@@ -38,6 +38,12 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Regenerate and verify the course catalogue
+        run: |
+          cp curriculum.json curriculum.committed.json
+          node curriculum-source.mjs
+          python -c "import json; from pathlib import Path; committed=json.loads(Path('curriculum.committed.json').read_text()); generated=json.loads(Path('curriculum.json').read_text()); assert committed == generated, 'curriculum.json does not match curriculum-source.mjs'"
+          rm curriculum.committed.json
       - name: Install PostgreSQL client
         run: sudo apt-get update && sudo apt-get install -y postgresql-client
       - name: Check every course solution and seed

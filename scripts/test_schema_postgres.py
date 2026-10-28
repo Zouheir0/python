@@ -30,7 +30,7 @@ schema = ROOT / "supabase" / "schema.sql"
 psql(file=schema)
 psql(file=schema)  # Re-running must be safe and re-seed the same challenge catalogue.
 count, _ = psql("SELECT count(*) FROM private.lesson_challenges;")
-assert count == "68", f"Expected 68 private challenges, got {count}"
+assert count == "70", f"Expected 70 private challenges, got {count}"
 privileges, _ = psql("""SELECT
   (NOT has_table_privilege('anon','public.profiles','SELECT')) AND
   (NOT has_column_privilege('authenticated','public.profiles','xp','UPDATE')) AND
@@ -71,7 +71,7 @@ _, denied = psql(f"SET ROLE authenticated; SET request.jwt.claim.sub = '{a}'; UP
 assert "permission denied" in denied.lower(), f"Direct XP update wasn't denied: {denied}"
 _, wrong_output = psql(f"SET ROLE authenticated; SET request.jwt.claim.sub = '{a}'; SELECT public.complete_lesson('c01-l02','not the expected answer');", expect_success=False)
 assert "output does not match" in wrong_output.lower(), f"Wrong output wasn't rejected: {wrong_output}"
-print("PASS: schema applies and re-runs cleanly; 68 seeds present")
+print("PASS: schema applies and re-runs cleanly; 70 seeds present")
 print("PASS: RLS isolates accounts; public leaderboard reveals only opted-in usernames")
 print("PASS: profile-save RPC safely updates the signed-in student's profile without accepting XP")
 print("PASS: browser roles cannot update XP or call XP RPC anonymously")
