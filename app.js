@@ -80,15 +80,30 @@ async function initBackend() {
     state.user = data.session?.user || null;
     if (state.user) await refreshProfile();
     state.supabase.auth.onAuthStateChange((event, session) => {
+      const previousUserId = state.user?.id || null;
+      const nextUserId = session?.user?.id || null;
       state.session = session;
       state.user = session?.user || null;
       state.recoveryMode = event === 'PASSWORD_RECOVERY';
-      if (!state.user) { state.profile = null; state.cloudCompleted = new Set(); }
-      // Defer async calls so the auth event handler does not block Supabase's auth lock.
-      queueMicrotask(async () => {
-        if (state.user) await refreshCloudProgress(false);
-        if (state.view === 'account' || event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'PASSWORD_RECOVERY') render();
+
+      // Never let one account's in-memory profile/history flash for the next account.
+      if (previousUserId !== nextUserId) {
+        state.profile = null;
+        state.cloudCompleted = new Set();
+        state.backendError = '';
+        state.lastRun = null;
         updateHeaderStats();
+        if (state.view === 'account') render();
+      }
+      if (!state.user) { state.profile = null; state.cloudCompleted = new Set(); }
+
+      // Defer async calls so the auth event handler does not block Supabase's auth lock.
+      // Capture the user ID: a slow response from the previous account must be ignored.
+      queueMicrotask(async () => {
+        const activeUserId = state.user?.id || null;
+        if (activeUserId) await refreshCloudProgress(false, activeUserId);
+        if (state.user?.id === activeUserId && (state.view === 'account' || event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'PASSWORD_RECOVERY')) render();
+        if (state.user?.id === activeUserId) updateHeaderStats();
       });
     });
   } catch (error) {
@@ -99,24 +114,40 @@ async function initBackend() {
 
 async function refreshProfile() {
   if (!state.supabase || !state.user) return;
-  const { data, error } = await state.supabase.from('profiles').select('id,username,xp,leaderboard_public').eq('id', state.user.id).maybeSingle();
+  const userId = state.user.id;
+  const { data, error } = await state.supabase.from('profiles').select('id,username,xp,leaderboard_public').eq('id', userId).maybeSingle();
   if (error) throw error;
+  // A sign-in can change while this request is in flight. Ignore stale account responses.
+  if (state.user?.id !== userId) return;
+  if (data && data.id !== userId) return;
   state.profile = data;
 }
-async function refreshCloudProgress(shouldRender = true) {
-  if (!state.supabase || !state.user) return;
+async function refreshCloudProgress(shouldRender = true, expectedUserId = null) {
+  const userId = expectedUserId || state.user?.id || null;
+  if (!state.supabase || !userId || state.user?.id !== userId) return;
   try {
     const [{ data: completed, error: completedError }, { data: profile, error: profileError }] = await Promise.all([
-      state.supabase.from('lesson_completions').select('lesson_id').eq('user_id', state.user.id),
-      state.supabase.from('profiles').select('id,username,xp,leaderboard_public').eq('id', state.user.id).maybeSingle(),
+      state.supabase.from('lesson_completions').select('lesson_id').eq('user_id', userId),
+      state.supabase.from('profiles').select('id,username,xp,leaderboard_public').eq('id', userId).maybeSingle(),
     ]);
     if (completedError) throw completedError;
     if (profileError) throw profileError;
+    // Do not allow late responses from a previously signed-in account to overwrite the current one.
+    if (state.user?.id !== userId) return;
+    if (profile && profile.id !== userId) throw new Error('Account profile did not match the signed-in user.');
     state.cloudCompleted = new Set((completed || []).map((row) => row.lesson_id));
     state.profile = profile;
+    state.backendError = '';
     if (shouldRender) render(); else updateHeaderStats();
   } catch (error) {
+    if (state.user?.id !== userId) return;
     state.backendError = error.message || 'Could not load account progress.';
+    // When the active account has no readable profile, show no previous account's values.
+    if (!state.profile || state.profile.id !== userId) {
+      state.profile = null;
+      state.cloudCompleted = new Set();
+      updateHeaderStats();
+    }
   }
 }
 
@@ -296,7 +327,7 @@ async function handleAction(action, button) {
   if (action==='sandbox-clear') { const out=$('#sandbox-output');if(out)out.textContent='';return; }
   if (action==='sandbox-template') { const templates={hello:`print("Hello, world!")`,strings:`print(2 + 5)\nprint("2 + 5")`,loops:`for number in range(1, 6):\n    print(number)`,calculator:`first = float(input("First number: "))\nsecond = float(input("Second number: "))\nprint(f"Total: {first + second}")`};const code=templates[button.dataset.template];if(code!==undefined){$('#sandbox-code').value=code;$('#sandbox-input').value=button.dataset.template==='calculator'?'3\n4':'';saveDraft('sandbox',code,$('#sandbox-input').value);}return; }
   if (action==='account-tab') { state.accountTab=button.dataset.tab;render();return; }
-  if (action==='sign-out') { if(state.supabase){const {error}=await state.supabase.auth.signOut();if(error){showAccountMessage(error.message,'bad');return;} }state.user=null;state.profile=null;state.session=null;state.cloudCompleted=new Set();state.view='account';render();return; }
+  if (action==='sign-out') { if(state.supabase){const {error}=await state.supabase.auth.signOut();if(error){showAccountMessage(error.message,'bad');return;} }state.user=null;state.profile=null;state.session=null;state.cloudCompleted=new Set();state.backendError='';state.view='account';render();updateHeaderStats();return; }
   if (action==='password-reset') { await sendPasswordReset();return; }
   if (action==='reload-leaderboard') { await maybeLoadLeaderboard(true);render();return; }
   if (action==='copy-reference') { try { await navigator.clipboard.writeText(button.dataset.code||'');button.textContent='Copied'; } catch { button.textContent='Clipboard blocked'; }return; }
@@ -430,11 +461,21 @@ async function submitAuth(form) {
       if(!validUsername(username)){showAccountMessage('Username must be 3 to 20 letters, numbers, or underscores.','bad');return;}
       const {data,error}=await state.supabase.auth.signUp({email,password,options:{data:{username,leaderboard_public:$('#leaderboard-opt-in')?.checked===true},emailRedirectTo:window.location.href.split('#')[0]}});
       if(error)throw error;
-      if(data.session){showAccountMessage('Account created. Your profile is ready.','good');state.view='account';await refreshCloudProgress(false);render();}
-      else showAccountMessage('Check your email for the confirmation link. After confirming, return here and sign in.','good');
+      if(data.session){
+        if (state.user?.id !== data.user?.id) { state.profile = null; state.cloudCompleted = new Set(); state.backendError = ''; }
+        state.user = data.user; state.session = data.session;
+        showAccountMessage('Account created. Your profile is ready.','good');state.view='account';await refreshCloudProgress(false,data.user.id);render();
+      } else {
+        // Email-confirmation signups have no session yet. Ensure old account data is not displayed as the new account's.
+        if (state.user) { state.profile = null; state.cloudCompleted = new Set(); }
+        showAccountMessage('Check your email for the confirmation link. You will see this account\'s progress after confirming and signing in.','good');
+        if (state.view !== 'account') state.view = 'account';
+        updateHeaderStats();
+      }
     } else {
       const {data,error}=await state.supabase.auth.signInWithPassword({email,password});if(error)throw error;
-      state.user=data.user;state.session=data.session;await refreshCloudProgress(false);state.view='account';showNotice('Signed in successfully.','good');render();
+      if (state.user?.id !== data.user.id) { state.profile = null; state.cloudCompleted = new Set(); state.backendError = ''; updateHeaderStats(); }
+      state.user=data.user;state.session=data.session;await refreshCloudProgress(false,data.user.id);state.view='account';showNotice('Signed in successfully.','good');render();
     }
   } catch(error) { showAccountMessage(normalizeAuthError(error.message),'bad'); }
 }
