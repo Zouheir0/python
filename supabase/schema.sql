@@ -235,6 +235,6 @@ end;
 $$;
 revoke all on function public.complete_lesson(text, text, boolean) from public, anon;
 grant execute on function public.complete_lesson(text, text, boolean) to authenticated;
-comment on function public.complete_lesson(text, text, boolean) is 'Validates challenge output, awards half XP for assisted solutions, permits a later independent completion to earn the rest, and awards no duplicate full credit.'
+comment on function public.complete_lesson(text, text, boolean) is 'Validates challenge output, awards half XP for assisted solutions, permits a later independent completion to earn the rest, and awards no duplicate full credit.';
 
 notify pgrst, 'reload schema';
