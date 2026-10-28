@@ -124,7 +124,7 @@ def main():
                 assert page.locator("#sandbox-input").count() == 0, "The sandbox must not show a separate input-values box"
                 page.locator("#sandbox-code").fill('name = input("What is your name? ")\nprint(f"Hello, {name}!")')
                 page.locator('button[data-action="sandbox-run"]').click()
-                wait_for_text(page.locator("#sandbox-output"), "What is your name?")
+                wait_for_console_input(page, "#sandbox-output", "#sandbox-status")
                 page.locator(".console-stdin").fill("Ada")
                 page.locator(".console-stdin").press("Enter")
                 wait_for_exact_text(page.locator("#sandbox-status"), "FINISHED")
