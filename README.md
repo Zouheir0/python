@@ -5,7 +5,7 @@
 ## What is included
 
 - **16 chapters, 70 coding activities, and 17 projects**, progressing from `print()` and strings to loops, functions, dictionaries, debugging, modules, and classes.
-- A live editor in every activity. Students type, run, compare output, see hints, and can reveal or insert one possible solution.
+- A live editor in every activity. Students type, run, compare output, see hints, and can reveal or insert one possible solution. Python `input()` pauses execution and displays an inline prompt in the console; learners type their answer there and press Enter, just like a terminal.
 - An open sandbox with real Python through Pyodide. Code runs in a disposable Web Worker and times out after six seconds.
 - XP and levels, saved locally when no account backend is configured.
 - Optional Supabase accounts, profile settings, cloud progress, password reset, account deletion, and a real opt-in leaderboard.
@@ -63,9 +63,9 @@ The backend is optional until you want accounts and cross-device progress. Do no
 
 The database prevents a visitor from directly setting arbitrary XP, prevents another student from editing private records, and awards an activity only once per account. However, course content and expected challenge output are downloaded to the browser, so a technically skilled person can spoof a known answer and try to earn XP without doing the work. This is a casual learning leaderboard, **not a cheat-proof competition or gradebook**. Do not attach prizes or school grades to XP. Truly cheat-resistant grading would require a separately designed server-side code execution and hidden-test service with resource limits, monitoring, and abuse controls; a static GitHub Pages app alone cannot provide that.
 
-## How the Python editor works
+## How the Python editor and console work
 
-Pyodide is a WebAssembly build of CPython. This app loads a pinned Pyodide release in a module Web Worker so student code runs separately from the page's UI. The worker is terminated after six seconds. That protects the interface from simple infinite loops, but it is not a security boundary for running confidential or hostile workloads. Student code and input are processed in the browser and are not intentionally sent to Python Path's Supabase database. Never type passwords or personal information into the editor.
+Pyodide is a WebAssembly build of CPython. This app loads a pinned Pyodide release in a module Web Worker so student code runs separately from the page's UI. Console output appears as the code runs. When Python reaches `input()`, execution pauses and a small text field appears at that exact point in the console; type an answer and press Enter to resume the program. Multiple prompts and `input()` calls inside ordinary functions are supported. Use **Stop** to cancel a running program. The worker is terminated if execution exceeds its time limit. That protects the interface from simple infinite loops, but it is not a security boundary for running confidential or hostile workloads. Student code and input are processed in the browser and are not intentionally sent to Python Path's Supabase database. Never type passwords or personal information into the editor.
 
 The app runs Pyodide through a same-origin ES-module worker, using the official pinned Pyodide ES-module loader, and loads the Supabase JavaScript SDK from jsDelivr at a pinned version. Both runtime and SDK require a network connection. For higher supply-chain control, self-host reviewed copies of the runtime and SDK and update them through a reviewed dependency process.
 
@@ -75,7 +75,7 @@ This project is educational software for teenagers, but age ranges vary. Before 
 
 ## Local quality checks
 
-Run `python scripts/check_course.py` to test every one of the 68 authored solution programs against its expected output, verify the database seed contains every activity ID, and confirm the browser config ships blank. CI also checks `python-worker.js`, applies `supabase/schema.sql` twice to a disposable PostgreSQL database, verifies table grants and row-level security, and runs Playwright browser smoke tests against real Pyodide. The browser tests replace `config.js` with blank values so they never read or write real student data. These checks still do not replace live Supabase Auth and deployed-domain security tests.
+Run `python scripts/check_course.py` to test all 70 authored solution programs against its expected output, verify the database seed contains every activity ID, and confirm the browser config ships blank. CI also checks `python-worker.js`, applies `supabase/schema.sql` twice to a disposable PostgreSQL database, verifies table grants and row-level security, and runs Playwright browser smoke tests against real Pyodide. The browser tests replace `config.js` with blank values so they never read or write real student data. These checks still do not replace live Supabase Auth and deployed-domain security tests.
 
 ## Security documentation
 
