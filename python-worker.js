@@ -203,7 +203,8 @@ try:
     _pp_code_object = compile(
         _pp_tree, "<your code>", "exec",
         flags=ast.PyCF_ALLOW_TOP_LEVEL_AWAIT, dont_inherit=True)
-    _pp_top_level = eval(_pp_code_object, {"__name__": "__main__"})
+    _pp_student_globals = {"__name__": "__main__", "_pp_input_async": _pp_input_async}
+_pp_top_level = eval(_pp_code_object, _pp_student_globals)
     if _pp_top_level is not None:
         await _pp_top_level
 except BaseException:
