@@ -34,6 +34,8 @@ assert "function draftStorageKey()" in app_js and "user-${state.user.id}" in app
 assert "if (action==='repeat-activity')" in app_js and "Review this lesson again" in app_js, "Completed activities must have an explicit review/repeat action"
 assert "Repeating will not remove completion or award XP twice." in app_js, "Repeat behavior must explain that XP is not awarded twice"
 assert "if(input)input.value=a.input_values||'';" in app_js, "Use solution must restore a lesson's sample input values"
+assert "needsCompleteLessonSchemaUpdate(error)" in app_js and "PGRST202" in app_js, "Missing RPC errors must show a specific Supabase schema-migration instruction"
+assert "blob/main/supabase/schema.sql" in app_js, "Cloud progress errors must link to the current schema SQL"
 
 failed = []
 for activity in activities:
@@ -70,7 +72,7 @@ if failed:
     raise SystemExit(f"{len(failed)} solution(s) failed")
 print(f"PASS: {len(course['chapters'])} chapters, {len(activities)} activities, 17 projects")
 print(f"PASS: all {len(activities)} solution programs produce the expected output")
-print("PASS: 68 challenge seed IDs match the course and the schema reloads PostgREST")
+print("PASS: 70 challenge seed IDs match the course and the schema reloads PostgREST")
 print("PASS: browser config uses only a publishable/anon key")
 print("PASS: print() is followed by len(), then the course builds toward an independent calculator project")
 print("PASS: using a solution restores known sample input values")

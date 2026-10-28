@@ -4,7 +4,7 @@
 
 ## What is included
 
-- **16 chapters, 68 coding activities, and 16 mini-projects**, progressing from `print()` and strings to loops, functions, dictionaries, debugging, modules, and classes.
+- **16 chapters, 70 coding activities, and 17 projects**, progressing from `print()` and strings to loops, functions, dictionaries, debugging, modules, and classes.
 - A live editor in every activity. Students type, run, compare output, see hints, and can reveal or insert one possible solution.
 - An open sandbox with real Python through Pyodide. Code runs in a disposable Web Worker and times out after six seconds.
 - XP and levels, saved locally when no account backend is configured.

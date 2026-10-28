@@ -7,6 +7,11 @@ const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
 const esc = (value) => String(value ?? '').replace(/[&<>"']/g, (ch) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' })[ch]);
 const cleanOutput = (value) => String(value ?? '').replace(/\r\n?/g, '\n').replace(/\n+$/g, '');
 const validUsername = (name) => /^[a-zA-Z0-9_]{3,20}$/.test(name);
+function needsCompleteLessonSchemaUpdate(error) {
+  const code = String(error?.code || '');
+  const message = String(error?.message || error || '');
+  return code === 'PGRST202' || (/complete_lesson/i.test(message) && /schema cache|could not find the function/i.test(message));
+}
 
 const state = {
   chapters: [], activities: [], view: 'learn', chapterId: null, activityId: null,
@@ -410,7 +415,11 @@ async function completeActivity(activity, output, feedback) {
       if (feedback) feedback.innerHTML = '<div class="feedback good"><strong>' + (data?.upgraded ? 'Full credit unlocked!' : 'Nice work!') + '</strong><br>' + esc(message) + '</div>';
       if (data?.awarded) showLevelFeedback(Number(data.total_xp ?? state.profile?.xp ?? 0), granted, feedback);
     } catch (error) {
-      if (feedback) feedback.innerHTML = '<div class="feedback bad"><strong>Your code is correct, but cloud progress did not save.</strong><br>' + esc(error.message || 'Database request failed') + '. Keep this page open, check the backend setup, and try again. No online XP was claimed.</div>';
+      if (feedback && needsCompleteLessonSchemaUpdate(error)) {
+        feedback.innerHTML = '<div class="feedback bad"><strong>Your Python code is correct, but Supabase needs a database update.</strong><p>The live database is missing the lesson-saving function this version uses. Your code is not the problem, and no online XP was awarded.</p><ol><li>Open your Supabase project and go to <strong>SQL Editor</strong>.</li><li>Open the latest <a href="https://github.com/Zouheir0/python/blob/main/supabase/schema.sql" target="_blank" rel="noopener noreferrer">supabase/schema.sql</a> from this repository and run the entire file.</li><li>Wait for the query to finish successfully, then refresh Python Path and check the lesson again.</li></ol><p>Your code remains in the editor. Do not disable row-level security to fix this error.</p></div>';
+      } else if (feedback) {
+        feedback.innerHTML = '<div class="feedback bad"><strong>Your code is correct, but cloud progress did not save.</strong><br>' + esc(error.message || 'Database request failed') + '. Keep this page open, check the backend setup, and try again. No online XP was claimed.</div>';
+      }
     }
   } else {
     state.local.awards = state.local.awards || {};
