@@ -451,6 +451,15 @@ async function executePython(code, outputEl) {
             return;
           }
           const field = document.createElement('input');
+          // Keep stdin on a dedicated row below the prompt. A single inline input
+          // can collide visually with text such as "None" in narrow console layouts.
+          const lineBreak = document.createElement('br');
+          const inputRow = document.createElement('div');
+          inputRow.className = 'console-input-row';
+          const marker = document.createElement('span');
+          marker.className = 'console-input-marker';
+          marker.textContent = '>';
+          marker.setAttribute('aria-hidden', 'true');
           field.className = 'console-stdin';
           field.type = 'text';
           field.autocomplete = 'off';
@@ -459,15 +468,13 @@ async function executePython(code, outputEl) {
           field.inputMode = 'text';
           field.setAttribute('aria-label', 'Python input. Type your answer and press Enter.');
           field.setAttribute('enterkeyhint', 'done');
-          field.style.width = '6ch';
-          field.addEventListener('input', () => {
-            field.style.width = Math.max(6, Math.min(48, field.value.length + 1)) + 'ch';
-          });
+          inputRow.append(marker, field);
           field.addEventListener('keydown', (inputEvent) => {
             if (inputEvent.key !== 'Enter') return;
             inputEvent.preventDefault();
             const value = field.value;
-            field.remove();
+            lineBreak.remove();
+            inputRow.remove();
             activeInput = null;
             try {
               worker.postMessage({ id: 1, type: 'stdin', requestId: message.requestId, value });
@@ -476,7 +483,7 @@ async function executePython(code, outputEl) {
               finish({ output: streamedOutput, error: 'Could not send input to Python: ' + (error?.message || error) });
             }
           });
-          outputEl.append(field);
+          outputEl.append(lineBreak, inputRow);
           activeInput = field;
           field.focus({ preventScroll: true });
         } else if (message.type === 'result') {
