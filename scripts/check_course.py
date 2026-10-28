@@ -25,6 +25,11 @@ assert 'const previousUserId = state.user?.id || null;' in app_js, 'Auth changes
 assert 'if (state.user?.id !== userId) return;' in app_js, 'Stale cloud requests must not overwrite another account'
 assert "eq('user_id', userId)" in app_js and "eq('id', userId)" in app_js, 'Cloud progress queries must use a captured user ID'
 assert 'state.profile = null;' in app_js and 'state.cloudCompleted = new Set();' in app_js, 'Account switches must clear previous account state'
+assert "function clearGuestProgress()" in app_js and "state.local = { completed: [], awards: {} };" in app_js, "Guest-device progress must be cleared when an account is created or switched"
+assert "if (nextUserId) clearGuestProgress();" in app_js, "A sign-in identity change must discard unowned guest progress"
+assert "function draftStorageKey()" in app_js and "user-${state.user.id}" in app_js and "-guest" in app_js, "Editor drafts must be isolated between account IDs and guest mode"
+assert "if (action==='repeat-activity')" in app_js and "Review this lesson again" in app_js, "Completed activities must have an explicit review/repeat action"
+assert "Repeating will not remove completion or award XP twice." in app_js, "Repeat behavior must explain that XP is not awarded twice"
 
 failed = []
 for activity in activities:
