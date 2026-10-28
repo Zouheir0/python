@@ -21,12 +21,12 @@
           "solution_code": "print(\"I wrote my first line!\")",
           "input_values": "",
           "points": 15,
-          "chapter_id": "c01",
-          "chapter_title": "Make Python talk",
           "walkthrough": [
             "print(...) is the instruction that displays something. The parentheses hold what you want Python to show.",
             "The quote marks wrap the exact text; the quote marks themselves do not appear in the output."
-          ]
+          ],
+          "chapter_id": "c01",
+          "chapter_title": "Make Python talk"
         },
         {
           "id": "c01-l04",
@@ -43,12 +43,12 @@
           "solution_code": "print(len(\"Python\"))",
           "input_values": "",
           "points": 15,
-          "chapter_id": "c01",
-          "chapter_title": "Make Python talk",
           "walkthrough": [
             "len(\"Python\") counts each character inside the quote marks; the quote marks are not included.",
             "print(...) displays the number returned by len(...), so the output is 6."
-          ]
+          ],
+          "chapter_id": "c01",
+          "chapter_title": "Make Python talk"
         },
         {
           "id": "c01-l02",
@@ -65,12 +65,12 @@
           "solution_code": "print(2 + 5)",
           "input_values": "",
           "points": 15,
-          "chapter_id": "c01",
-          "chapter_title": "Make Python talk",
           "walkthrough": [
             "Without quotes, 2 + 5 is a calculation, so Python prints 7.",
             "With quotes, Python treats 2 + 5 as text and prints those characters instead."
-          ]
+          ],
+          "chapter_id": "c01",
+          "chapter_title": "Make Python talk"
         },
         {
           "id": "c01-l03",
@@ -87,12 +87,12 @@
           "solution_code": "print(\"Python notices capitals.\")",
           "input_values": "",
           "points": 15,
-          "chapter_id": "c01",
-          "chapter_title": "Make Python talk",
           "walkthrough": [
             "Python's built-in command is spelled print with a lowercase p.",
             "Changing that p to P creates a different name, so Python cannot find the command."
-          ]
+          ],
+          "chapter_id": "c01",
+          "chapter_title": "Make Python talk"
         },
         {
           "id": "c01-p01",
@@ -109,12 +109,12 @@
           "solution_code": "print(\"Name: Noor\")\nprint(\"Favorite subject: Art\")\nprint(10 + 4)",
           "input_values": "",
           "points": 40,
-          "chapter_id": "c01",
-          "chapter_title": "Make Python talk",
           "walkthrough": [
             "Each print(...) instruction writes one line, so three print calls make a three-line card.",
             "Text goes inside quotes; the final number can be a calculation without quotes."
-          ]
+          ],
+          "chapter_id": "c01",
+          "chapter_title": "Make Python talk"
         }
       ]
     },
@@ -138,12 +138,12 @@
           "solution_code": "stars = 5\nprint(stars)",
           "input_values": "",
           "points": 15,
-          "chapter_id": "c02",
-          "chapter_title": "Store information",
           "walkthrough": [
             "stars = 5 stores the number 5 under the name stars.",
             "print(stars) looks up the stored value. Do not put quotes around the variable name."
-          ]
+          ],
+          "chapter_id": "c02",
+          "chapter_title": "Store information"
         },
         {
           "id": "c02-l02",
@@ -160,12 +160,12 @@
           "solution_code": "game_level = 3\nprint(game_level)",
           "input_values": "",
           "points": 15,
-          "chapter_id": "c02",
-          "chapter_title": "Store information",
           "walkthrough": [
             "The left side is the label; the right side is the value to remember.",
             "Underscores can join words in a name, but spaces cannot. Use exactly the same spelling when you print it."
-          ]
+          ],
+          "chapter_id": "c02",
+          "chapter_title": "Store information"
         },
         {
           "id": "c02-l03",
@@ -182,12 +182,12 @@
           "solution_code": "points = 10\npoints = points + 6\nprint(points)",
           "input_values": "",
           "points": 15,
-          "chapter_id": "c02",
-          "chapter_title": "Store information",
           "walkthrough": [
             "The first line stores 10 in points.",
             "The next line reads the old points value, adds 6, and stores the new total. That is why the result is 16."
-          ]
+          ],
+          "chapter_id": "c02",
+          "chapter_title": "Store information"
         },
         {
           "id": "c02-p02",
@@ -204,12 +204,12 @@
           "solution_code": "score = 7\nscore = score + 8\nprint(score)",
           "input_values": "",
           "points": 40,
-          "chapter_id": "c02",
-          "chapter_title": "Store information",
           "walkthrough": [
             "Set score to 7 first, then update it by adding 8 to the existing score.",
             "print(score) displays the number. This quest sticks to variables and arithmetic; formatted messages are taught later."
-          ]
+          ],
+          "chapter_id": "c02",
+          "chapter_title": "Store information"
         }
       ]
     },
@@ -233,12 +233,12 @@
           "solution_code": "print(30 - 12)",
           "input_values": "",
           "points": 15,
-          "chapter_id": "c03",
-          "chapter_title": "Numbers and math",
           "walkthrough": [
             "The + symbol adds, and the - symbol subtracts.",
             "Each print(...) runs its calculation and displays the answer on a new line."
-          ]
+          ],
+          "chapter_id": "c03",
+          "chapter_title": "Numbers and math"
         },
         {
           "id": "c03-l02",
@@ -255,12 +255,12 @@
           "solution_code": "print(8 * 9)",
           "input_values": "",
           "points": 15,
-          "chapter_id": "c03",
-          "chapter_title": "Numbers and math",
           "walkthrough": [
             "Use * for multiplication; the keyboard letter x is not the multiplication operator.",
             "The / symbol divides. Python may show the result as a decimal such as 5.0."
-          ]
+          ],
+          "chapter_id": "c03",
+          "chapter_title": "Numbers and math"
         },
         {
           "id": "c03-l03",
@@ -277,12 +277,12 @@
           "solution_code": "print((6 + 2) * 3)",
           "input_values": "",
           "points": 15,
-          "chapter_id": "c03",
-          "chapter_title": "Numbers and math",
           "walkthrough": [
             "Python follows the usual math order: multiplication happens before addition.",
             "Parentheses make the part inside happen first, changing (6 + 2) * 3 to 24."
-          ]
+          ],
+          "chapter_id": "c03",
+          "chapter_title": "Numbers and math"
         },
         {
           "id": "c03-l04",
@@ -299,12 +299,12 @@
           "solution_code": "print(23 % 4)",
           "input_values": "",
           "points": 15,
-          "chapter_id": "c03",
-          "chapter_title": "Numbers and math",
           "walkthrough": [
             "// counts complete groups, while % gives what is left over.",
             "23 divided into groups of 4 leaves a remainder of 3, so 23 % 4 is 3."
-          ]
+          ],
+          "chapter_id": "c03",
+          "chapter_title": "Numbers and math"
         },
         {
           "id": "c03-p03",
@@ -321,12 +321,12 @@
           "solution_code": "quantity = 3\nprice = 4\nprint(quantity * price)",
           "input_values": "",
           "points": 40,
-          "chapter_id": "c03",
-          "chapter_title": "Numbers and math",
           "walkthrough": [
             "quantity stores how many badges you buy, and price stores the price of one badge.",
             "quantity * price calculates the full cost. Print the number first; formatted messages are taught in Chapter 4."
-          ]
+          ],
+          "chapter_id": "c03",
+          "chapter_title": "Numbers and math"
         }
       ]
     },
@@ -350,12 +350,12 @@
           "solution_code": "print(\"I like Python!\")",
           "input_values": "",
           "points": 15,
-          "chapter_id": "c04",
-          "chapter_title": "Text and strings",
           "walkthrough": [
             "Text in Python is called a string and sits between matching quote marks.",
             "The characters inside the quotes—including spaces and punctuation—are printed exactly as written."
-          ]
+          ],
+          "chapter_id": "c04",
+          "chapter_title": "Text and strings"
         },
         {
           "id": "c04-l02",
@@ -372,12 +372,12 @@
           "solution_code": "print(\"code\" + \" \" + \"time\")",
           "input_values": "",
           "points": 15,
-          "chapter_id": "c04",
-          "chapter_title": "Text and strings",
           "walkthrough": [
             "The + operator joins strings together instead of adding their characters as numbers.",
             "Python does not insert a space for you, so join in a string containing one space when you need it."
-          ]
+          ],
+          "chapter_id": "c04",
+          "chapter_title": "Text and strings"
         },
         {
           "id": "c04-l03",
@@ -394,12 +394,12 @@
           "solution_code": "print(\"learn\".upper())",
           "input_values": "",
           "points": 15,
-          "chapter_id": "c04",
-          "chapter_title": "Text and strings",
           "walkthrough": [
             "A dot connects a string to a method, such as .upper() or .lower().",
             "The method runs because of the parentheses and returns a changed version of the text."
-          ]
+          ],
+          "chapter_id": "c04",
+          "chapter_title": "Text and strings"
         },
         {
           "id": "c04-l04",
@@ -416,12 +416,12 @@
           "solution_code": "name = \"Ava\"\nage = 14\nprint(f\"{name} is {age}\")",
           "input_values": "",
           "points": 15,
-          "chapter_id": "c04",
-          "chapter_title": "Text and strings",
           "walkthrough": [
             "The f before the opening quote tells Python to fill in placeholders.",
             "Put a variable inside curly braces, like {age}; Python replaces the braces with its current value."
-          ]
+          ],
+          "chapter_id": "c04",
+          "chapter_title": "Text and strings"
         },
         {
           "id": "c04-p04",
@@ -438,12 +438,12 @@
           "solution_code": "nickname = \"Rami\"\nlevel = 2\nprint(f\"Welcome, {nickname}! Level {level}\")",
           "input_values": "",
           "points": 40,
-          "chapter_id": "c04",
-          "chapter_title": "Text and strings",
           "walkthrough": [
             "The f-string is the message template; {nickname} and {level} are fill-in-the-blank spots.",
             "Keep the regular text and punctuation outside the braces, and the variable names inside them."
-          ]
+          ],
+          "chapter_id": "c04",
+          "chapter_title": "Text and strings"
         }
       ]
     },
@@ -467,12 +467,12 @@
           "solution_code": "print(type(3.5))",
           "input_values": "",
           "points": 15,
-          "chapter_id": "c05",
-          "chapter_title": "Types and conversions",
           "walkthrough": [
             "12 is an int, 3.5 is a float, and \"12\" is a str (text).",
             "type(value) asks Python what kind of value it is; the quotation marks change the type."
-          ]
+          ],
+          "chapter_id": "c05",
+          "chapter_title": "Types and conversions"
         },
         {
           "id": "c05-l02",
@@ -489,12 +489,12 @@
           "solution_code": "number_text = \"8\"\nnumber = int(number_text)\nprint(number + 2)",
           "input_values": "",
           "points": 15,
-          "chapter_id": "c05",
-          "chapter_title": "Types and conversions",
           "walkthrough": [
             "Numeric text needs converting before it can be used for arithmetic. int(\"8\") makes the number 8.",
             "Once it is a number, Python can add 2 to produce 10."
-          ]
+          ],
+          "chapter_id": "c05",
+          "chapter_title": "Types and conversions"
         },
         {
           "id": "c05-l03",
@@ -511,12 +511,12 @@
           "solution_code": "level = 3\nprint(\"Level \" + str(level))",
           "input_values": "",
           "points": 15,
-          "chapter_id": "c05",
-          "chapter_title": "Types and conversions",
           "walkthrough": [
             "str(level) turns the number into text.",
             "The + operator can then join that text to another string such as \"Level \". This is one way to build a message."
-          ]
+          ],
+          "chapter_id": "c05",
+          "chapter_title": "Types and conversions"
         },
         {
           "id": "c05-p05",
@@ -533,12 +533,12 @@
           "solution_code": "age_text = \"15\"\nage = int(age_text)\nprint(f\"Next year: {age + 1}\")",
           "input_values": "",
           "points": 40,
-          "chapter_id": "c05",
-          "chapter_title": "Types and conversions",
           "walkthrough": [
             "age_text starts as text, so int(age_text) converts it into a whole number.",
             "The f-string inserts the result of age + 1 into the sentence."
-          ]
+          ],
+          "chapter_id": "c05",
+          "chapter_title": "Types and conversions"
         }
       ]
     },
@@ -562,12 +562,12 @@
           "solution_code": "name = input(\"Name? \")\nprint(f\"Hello, {name}!\")",
           "input_values": "Noor",
           "points": 15,
-          "chapter_id": "c06",
-          "chapter_title": "Ask the user for input",
           "walkthrough": [
             "input(\"Name? \") pauses and collects the typed answer as text.",
             "The answer is stored in name, and the f-string places that answer after Hello."
-          ]
+          ],
+          "chapter_id": "c06",
+          "chapter_title": "Ask the user for input"
         },
         {
           "id": "c06-l02",
@@ -584,12 +584,12 @@
           "solution_code": "number = int(input(\"Number? \"))\nprint(number * 2)",
           "input_values": "6",
           "points": 15,
-          "chapter_id": "c06",
-          "chapter_title": "Ask the user for input",
           "walkthrough": [
             "input() always returns text—even when the person types digits.",
             "int(input(...)) converts that text to a whole number before multiplication."
-          ]
+          ],
+          "chapter_id": "c06",
+          "chapter_title": "Ask the user for input"
         },
         {
           "id": "c06-l03",
@@ -606,12 +606,12 @@
           "solution_code": "amount = float(input(\"Amount? \"))\nprint(amount + 1.0)",
           "input_values": "3.5",
           "points": 15,
-          "chapter_id": "c06",
-          "chapter_title": "Ask the user for input",
           "walkthrough": [
             "float(input(...)) turns a typed decimal such as 3.5 into a number.",
             "Adding 1.0 gives 4.5; use float for decimals and int for whole numbers."
-          ]
+          ],
+          "chapter_id": "c06",
+          "chapter_title": "Ask the user for input"
         },
         {
           "id": "c06-p06",
@@ -628,12 +628,12 @@
           "solution_code": "snack = input(\"Snack? \")\ncount = int(input(\"How many? \"))\nprint(f\"Order: {count} {snack}\")",
           "input_values": "cookies\n2",
           "points": 40,
-          "chapter_id": "c06",
-          "chapter_title": "Ask the user for input",
           "walkthrough": [
             "The first input stores the snack name; the second is converted to a number with int(...).",
             "The f-string combines count and snack in one readable order message."
-          ]
+          ],
+          "chapter_id": "c06",
+          "chapter_title": "Ask the user for input"
         },
         {
           "id": "c06-p17",
@@ -650,13 +650,13 @@
           "solution_code": "first = float(input(\"First number: \"))\nsecond = float(input(\"Second number: \"))\nprint(\"Add:\", first + second)\nprint(\"Subtract:\", first - second)\nprint(\"Multiply:\", first * second)\nprint(\"Divide:\", first / second)",
           "input_values": "8\n2",
           "points": 40,
-          "chapter_id": "c06",
-          "chapter_title": "Ask the user for input",
           "walkthrough": [
             "input(...) reads the characters typed by the learner; float(...) converts those characters into a number Python can calculate with.",
             "Use the same two numeric variables for all four operations: + adds, - subtracts, * multiplies, and / divides.",
             "Each print line includes a short label followed by the calculated result, which makes the calculator easy to read."
-          ]
+          ],
+          "chapter_id": "c06",
+          "chapter_title": "Ask the user for input"
         }
       ]
     },
@@ -680,12 +680,12 @@
           "solution_code": "print(12 >= 12)",
           "input_values": "",
           "points": 15,
-          "chapter_id": "c07",
-          "chapter_title": "True or False checks",
           "walkthrough": [
             "A comparison such as 5 > 2 asks a yes-or-no question.",
             "Python prints True when the comparison is correct and False when it is not."
-          ]
+          ],
+          "chapter_id": "c07",
+          "chapter_title": "True or False checks"
         },
         {
           "id": "c07-l02",
@@ -702,12 +702,12 @@
           "solution_code": "is_ready = True\nprint(is_ready)",
           "input_values": "",
           "points": 15,
-          "chapter_id": "c07",
-          "chapter_title": "True or False checks",
           "walkthrough": [
             "Boolean values are written exactly as True and False, with capital first letters.",
             "Store the value in is_ready, then print the variable name without quotes."
-          ]
+          ],
+          "chapter_id": "c07",
+          "chapter_title": "True or False checks"
         },
         {
           "id": "c07-l03",
@@ -724,12 +724,12 @@
           "solution_code": "score = 80\nprint(score >= 60 and score <= 100)",
           "input_values": "",
           "points": 15,
-          "chapter_id": "c07",
-          "chapter_title": "True or False checks",
           "walkthrough": [
             "and is True only when both checks are True; or needs at least one True check.",
             "not flips a Boolean answer. The checks can be combined into one rule."
-          ]
+          ],
+          "chapter_id": "c07",
+          "chapter_title": "True or False checks"
         },
         {
           "id": "c07-p07",
@@ -746,12 +746,12 @@
           "solution_code": "score = 76\nhas_pass = True\nprint(score >= 50 and has_pass)",
           "input_values": "",
           "points": 40,
-          "chapter_id": "c07",
-          "chapter_title": "True or False checks",
           "walkthrough": [
             "score >= 50 checks the points requirement; has_pass already stores True or False.",
             "and makes both requirements necessary, so a player needs enough points and a pass."
-          ]
+          ],
+          "chapter_id": "c07",
+          "chapter_title": "True or False checks"
         }
       ]
     },
@@ -775,12 +775,12 @@
           "solution_code": "energy = 5\nif energy > 0:\n    print(\"Ready\")",
           "input_values": "",
           "points": 15,
-          "chapter_id": "c08",
-          "chapter_title": "Make decisions with if",
           "walkthrough": [
             "if checks the condition; the colon starts the block of instructions.",
             "The indented print line belongs to the if and runs only when energy > 0 is True."
-          ]
+          ],
+          "chapter_id": "c08",
+          "chapter_title": "Make decisions with if"
         },
         {
           "id": "c08-l02",
@@ -797,12 +797,12 @@
           "solution_code": "number = 7\nif number % 2 == 0:\n    print(\"Even\")\nelse:\n    print(\"Odd\")",
           "input_values": "",
           "points": 15,
-          "chapter_id": "c08",
-          "chapter_title": "Make decisions with if",
           "walkthrough": [
             "The if branch runs when the condition is True; else covers every other case.",
             "The % 2 == 0 check is True for an even number and False for an odd number."
-          ]
+          ],
+          "chapter_id": "c08",
+          "chapter_title": "Make decisions with if"
         },
         {
           "id": "c08-l03",
@@ -819,12 +819,12 @@
           "solution_code": "points = 12\nif points >= 15:\n    print(\"Gold\")\nelif points >= 10:\n    print(\"Silver\")\nelse:\n    print(\"Bronze\")",
           "input_values": "",
           "points": 15,
-          "chapter_id": "c08",
-          "chapter_title": "Make decisions with if",
           "walkthrough": [
             "Python checks if first, then each elif in order, and stops at the first match.",
             "Put the highest threshold first so 12 earns Silver, not Bronze."
-          ]
+          ],
+          "chapter_id": "c08",
+          "chapter_title": "Make decisions with if"
         },
         {
           "id": "c08-p08",
@@ -841,12 +841,12 @@
           "solution_code": "health = 7\nif health > 10:\n    print(\"Safe\")\nelif health > 0:\n    print(\"Careful\")\nelse:\n    print(\"Game over\")",
           "input_values": "",
           "points": 40,
-          "chapter_id": "c08",
-          "chapter_title": "Make decisions with if",
           "walkthrough": [
             "The first matching condition chooses the message for the player's health.",
             "Order the checks from greater than 10, to greater than 0, then the final else for zero."
-          ]
+          ],
+          "chapter_id": "c08",
+          "chapter_title": "Make decisions with if"
         }
       ]
     },
@@ -870,12 +870,12 @@
           "solution_code": "numbers = [3, 5, 8]\nprint(numbers)",
           "input_values": "",
           "points": 15,
-          "chapter_id": "c09",
-          "chapter_title": "Lists of things",
           "walkthrough": [
             "Square brackets create a list, and commas separate its items.",
             "print(numbers) displays the whole list, including the brackets."
-          ]
+          ],
+          "chapter_id": "c09",
+          "chapter_title": "Lists of things"
         },
         {
           "id": "c09-l02",
@@ -892,12 +892,12 @@
           "solution_code": "animals = [\"fox\", \"owl\", \"bear\"]\nprint(animals[1])",
           "input_values": "",
           "points": 15,
-          "chapter_id": "c09",
-          "chapter_title": "Lists of things",
           "walkthrough": [
             "List positions, called indexes, start at 0 rather than 1.",
             "So the second item is at index 1: animals[1]."
-          ]
+          ],
+          "chapter_id": "c09",
+          "chapter_title": "Lists of things"
         },
         {
           "id": "c09-l03",
@@ -914,12 +914,12 @@
           "solution_code": "tasks = [\"eat\", \"play\"]\ntasks.append(\"sleep\")\nprint(tasks)",
           "input_values": "",
           "points": 15,
-          "chapter_id": "c09",
-          "chapter_title": "Lists of things",
           "walkthrough": [
             "append(\"sleep\") adds a new item to the end of the existing list.",
             "len(tasks) counts the items. Print tasks when you want to inspect the list itself."
-          ]
+          ],
+          "chapter_id": "c09",
+          "chapter_title": "Lists of things"
         },
         {
           "id": "c09-l04",
@@ -936,12 +936,12 @@
           "solution_code": "values = [6, 2, 4]\nprint(sum(values))\nprint(sorted(values))",
           "input_values": "",
           "points": 15,
-          "chapter_id": "c09",
-          "chapter_title": "Lists of things",
           "walkthrough": [
             "sum(values) adds every number in the list.",
             "sorted(values) returns a newly ordered list; print(values) keeps the original order, which is why the starter fails."
-          ]
+          ],
+          "chapter_id": "c09",
+          "chapter_title": "Lists of things"
         },
         {
           "id": "c09-p09",
@@ -958,12 +958,12 @@
           "solution_code": "songs = [\"Sky\", \"Ocean\"]\nsongs.append(\"Stars\")\nprint(songs)\nprint(len(songs))",
           "input_values": "",
           "points": 40,
-          "chapter_id": "c09",
-          "chapter_title": "Lists of things",
           "walkthrough": [
             "The list stores songs in order, and append adds Stars at the end.",
             "len(songs) counts all songs after the new one is added."
-          ]
+          ],
+          "chapter_id": "c09",
+          "chapter_title": "Lists of things"
         }
       ]
     },
@@ -987,12 +987,12 @@
           "solution_code": "for number in [2, 4, 6]:\n    print(number)",
           "input_values": "",
           "points": 15,
-          "chapter_id": "c10",
-          "chapter_title": "Repeat with for loops",
           "walkthrough": [
             "The for line takes one item from the list at a time and stores it in number.",
             "The indented print runs once per item, producing one output line for each number."
-          ]
+          ],
+          "chapter_id": "c10",
+          "chapter_title": "Repeat with for loops"
         },
         {
           "id": "c10-l02",
@@ -1009,12 +1009,12 @@
           "solution_code": "for number in range(1, 5):\n    print(number)",
           "input_values": "",
           "points": 15,
-          "chapter_id": "c10",
-          "chapter_title": "Repeat with for loops",
           "walkthrough": [
             "range(1, 5) starts at 1 and stops before 5.",
             "That means number takes 1, 2, 3, and 4, one value per loop turn."
-          ]
+          ],
+          "chapter_id": "c10",
+          "chapter_title": "Repeat with for loops"
         },
         {
           "id": "c10-l03",
@@ -1031,12 +1031,12 @@
           "solution_code": "total = 0\nfor value in [1, 2, 3]:\n    total = total + value\nprint(total)",
           "input_values": "",
           "points": 15,
-          "chapter_id": "c10",
-          "chapter_title": "Repeat with for loops",
           "walkthrough": [
             "Start total at 0 before the loop begins.",
             "Each loop turn adds one list value to total; print after the loop to see the final sum."
-          ]
+          ],
+          "chapter_id": "c10",
+          "chapter_title": "Repeat with for loops"
         },
         {
           "id": "c10-p10",
@@ -1053,12 +1053,12 @@
           "solution_code": "for number in range(1, 5):\n    print(number * 5)",
           "input_values": "",
           "points": 40,
-          "chapter_id": "c10",
-          "chapter_title": "Repeat with for loops",
           "walkthrough": [
             "range(1, 5) produces four loop values: 1, 2, 3, and 4.",
             "Multiplying each value by 5 produces 5, 10, 15, and 20 without repeating four print lines."
-          ]
+          ],
+          "chapter_id": "c10",
+          "chapter_title": "Repeat with for loops"
         }
       ]
     },
@@ -1082,12 +1082,12 @@
           "solution_code": "count = 1\nwhile count <= 2:\n    print(count)\n    count = count + 1",
           "input_values": "",
           "points": 15,
-          "chapter_id": "c11",
-          "chapter_title": "While loops and loop control",
           "walkthrough": [
             "while repeats as long as count <= 2 remains True.",
             "Adding 1 during each turn eventually makes the condition False, so the loop stops."
-          ]
+          ],
+          "chapter_id": "c11",
+          "chapter_title": "While loops and loop control"
         },
         {
           "id": "c11-l02",
@@ -1104,12 +1104,12 @@
           "solution_code": "count = 0\nwhile count < 3:\n    print(count)\n    count = count + 1",
           "input_values": "",
           "points": 15,
-          "chapter_id": "c11",
-          "chapter_title": "While loops and loop control",
           "walkthrough": [
             "The loop checks count < 3 before each turn.",
             "Without count = count + 1, count stays 0 forever. Updating it lets the condition become False."
-          ]
+          ],
+          "chapter_id": "c11",
+          "chapter_title": "While loops and loop control"
         },
         {
           "id": "c11-l03",
@@ -1126,12 +1126,12 @@
           "solution_code": "for number in range(1, 5):\n    if number == 3:\n        continue\n    print(number)",
           "input_values": "",
           "points": 15,
-          "chapter_id": "c11",
-          "chapter_title": "While loops and loop control",
           "walkthrough": [
             "break exits the loop completely; continue skips to the next turn.",
             "Place the continue check before print so number 3 is skipped but 4 still prints."
-          ]
+          ],
+          "chapter_id": "c11",
+          "chapter_title": "While loops and loop control"
         },
         {
           "id": "c11-p11",
@@ -1148,12 +1148,12 @@
           "solution_code": "count = 4\nwhile count > 0:\n    print(count)\n    count = count - 1\nprint(\"Launch!\")",
           "input_values": "",
           "points": 40,
-          "chapter_id": "c11",
-          "chapter_title": "While loops and loop control",
           "walkthrough": [
             "The countdown begins at 4, prints the current value, then subtracts 1.",
             "When count reaches 0 the loop ends, and the final Launch! message prints afterward."
-          ]
+          ],
+          "chapter_id": "c11",
+          "chapter_title": "While loops and loop control"
         }
       ]
     },
@@ -1177,12 +1177,12 @@
           "solution_code": "def cheer():\n    print(\"You can do it!\")\ncheer()",
           "input_values": "",
           "points": 15,
-          "chapter_id": "c12",
-          "chapter_title": "Write reusable functions",
           "walkthrough": [
             "def cheer(): defines a reusable set of instructions; it does not run the body yet.",
             "The line cheer() calls the function, so Python enters the indented body and prints the message."
-          ]
+          ],
+          "chapter_id": "c12",
+          "chapter_title": "Write reusable functions"
         },
         {
           "id": "c12-l02",
@@ -1199,12 +1199,12 @@
           "solution_code": "def wave():\n    print(\"Hello!\")\nwave()\nwave()",
           "input_values": "",
           "points": 15,
-          "chapter_id": "c12",
-          "chapter_title": "Write reusable functions",
           "walkthrough": [
             "The function body is written once under def clap():.",
             "Each call clap() runs those instructions again, so two calls produce two messages."
-          ]
+          ],
+          "chapter_id": "c12",
+          "chapter_title": "Write reusable functions"
         },
         {
           "id": "c12-l03",
@@ -1221,12 +1221,12 @@
           "solution_code": "def start_game():\n    print(\"Start\")\n    print(\"Play fair\")\nstart_game()",
           "input_values": "",
           "points": 15,
-          "chapter_id": "c12",
-          "chapter_title": "Write reusable functions",
           "walkthrough": [
             "The colon ends the function header and starts its body.",
             "Both print lines need the same four-space indentation to belong to start_game()."
-          ]
+          ],
+          "chapter_id": "c12",
+          "chapter_title": "Write reusable functions"
         },
         {
           "id": "c12-p12",
@@ -1243,12 +1243,12 @@
           "solution_code": "def level_up():\n    print(\"Level up!\")\nlevel_up()\nlevel_up()",
           "input_values": "",
           "points": 40,
-          "chapter_id": "c12",
-          "chapter_title": "Write reusable functions",
           "walkthrough": [
             "Write the cheer once inside level_up().",
             "Call level_up() twice outside the indented block to get two lines without copying the message."
-          ]
+          ],
+          "chapter_id": "c12",
+          "chapter_title": "Write reusable functions"
         }
       ]
     },
@@ -1272,12 +1272,12 @@
           "solution_code": "def greet(name):\n    print(f\"Hello, {name}!\")\ngreet(\"Noor\")",
           "input_values": "",
           "points": 15,
-          "chapter_id": "c13",
-          "chapter_title": "Functions with inputs and results",
           "walkthrough": [
             "name is a parameter: a placeholder filled when greet(...) is called.",
             "greet(\"Noor\") passes Noor into that placeholder, and the f-string inserts it into the message."
-          ]
+          ],
+          "chapter_id": "c13",
+          "chapter_title": "Functions with inputs and results"
         },
         {
           "id": "c13-l02",
@@ -1294,12 +1294,12 @@
           "solution_code": "def triple(number):\n    return number * 3\nprint(triple(4))",
           "input_values": "",
           "points": 15,
-          "chapter_id": "c13",
-          "chapter_title": "Functions with inputs and results",
           "walkthrough": [
             "return number * 3 sends the calculated value back to whoever called triple().",
             "print(triple(4)) displays the returned answer, 12."
-          ]
+          ],
+          "chapter_id": "c13",
+          "chapter_title": "Functions with inputs and results"
         },
         {
           "id": "c13-l03",
@@ -1316,12 +1316,12 @@
           "solution_code": "def area(width, height):\n    return width * height\nprint(area(3, 4))",
           "input_values": "",
           "points": 15,
-          "chapter_id": "c13",
-          "chapter_title": "Functions with inputs and results",
           "walkthrough": [
             "return sends a value back; print displays a value on the screen.",
             "area(3, 4) should return width multiplied by height, and the outer print displays 12."
-          ]
+          ],
+          "chapter_id": "c13",
+          "chapter_title": "Functions with inputs and results"
         },
         {
           "id": "c13-p13",
@@ -1338,12 +1338,12 @@
           "solution_code": "def discounted(price):\n    return price - 3\nprint(discounted(12))",
           "input_values": "",
           "points": 40,
-          "chapter_id": "c13",
-          "chapter_title": "Functions with inputs and results",
           "walkthrough": [
             "discounted(price) receives the price when called.",
             "Subtract 3 inside return so discounted(12) sends 9 back to print."
-          ]
+          ],
+          "chapter_id": "c13",
+          "chapter_title": "Functions with inputs and results"
         }
       ]
     },
@@ -1367,12 +1367,12 @@
           "solution_code": "item = {\"color\": \"blue\"}\nprint(item[\"color\"])",
           "input_values": "",
           "points": 15,
-          "chapter_id": "c14",
-          "chapter_title": "Dictionaries",
           "walkthrough": [
             "A dictionary stores key-value pairs inside curly braces.",
             "player[\"name\"] looks up the value attached to the key name."
-          ]
+          ],
+          "chapter_id": "c14",
+          "chapter_title": "Dictionaries"
         },
         {
           "id": "c14-l02",
@@ -1389,12 +1389,12 @@
           "solution_code": "player = {\"score\": 10}\nplayer[\"score\"] = 25\nprint(player[\"score\"])",
           "input_values": "",
           "points": 15,
-          "chapter_id": "c14",
-          "chapter_title": "Dictionaries",
           "walkthrough": [
             "player[\"score\"] selects the value stored under score.",
             "Assigning a new number to that same key replaces its old value."
-          ]
+          ],
+          "chapter_id": "c14",
+          "chapter_title": "Dictionaries"
         },
         {
           "id": "c14-l03",
@@ -1411,12 +1411,12 @@
           "solution_code": "profile = {\"name\": \"Noor\"}\nprint(profile.get(\"pet\", \"unknown\"))",
           "input_values": "",
           "points": 15,
-          "chapter_id": "c14",
-          "chapter_title": "Dictionaries",
           "walkthrough": [
             "get(\"pet\", \"unknown\") checks for a pet key.",
             "Because the key is missing, get returns the backup value unknown instead of raising a KeyError."
-          ]
+          ],
+          "chapter_id": "c14",
+          "chapter_title": "Dictionaries"
         },
         {
           "id": "c14-p14",
@@ -1433,12 +1433,12 @@
           "solution_code": "player = {\"name\": \"Kai\", \"level\": 4}\nname = player[\"name\"]\nlevel = player[\"level\"]\nprint(f\"{name} level {level}\")",
           "input_values": "",
           "points": 40,
-          "chapter_id": "c14",
-          "chapter_title": "Dictionaries",
           "walkthrough": [
             "The dictionary keeps related player details under name and level.",
             "Read each value into a simple variable, then let the f-string build the final message."
-          ]
+          ],
+          "chapter_id": "c14",
+          "chapter_title": "Dictionaries"
         }
       ]
     },
@@ -1462,12 +1462,12 @@
           "solution_code": "print(10 / 2)",
           "input_values": "",
           "points": 15,
-          "chapter_id": "c15",
-          "chapter_title": "Errors and debugging",
           "walkthrough": [
             "Read the last line of an error first; it gives the error type and a useful clue.",
             "Dividing by zero raises ZeroDivisionError. Changing the divisor fixes this particular crash."
-          ]
+          ],
+          "chapter_id": "c15",
+          "chapter_title": "Errors and debugging"
         },
         {
           "id": "c15-l02",
@@ -1484,12 +1484,12 @@
           "solution_code": "points = 9\nprint(points)",
           "input_values": "",
           "points": 15,
-          "chapter_id": "c15",
-          "chapter_title": "Errors and debugging",
           "walkthrough": [
             "points is the name that was created.",
             "pointS has a capital S, so it is a different name. Use the exact same spelling."
-          ]
+          ],
+          "chapter_id": "c15",
+          "chapter_title": "Errors and debugging"
         },
         {
           "id": "c15-l03",
@@ -1506,12 +1506,12 @@
           "solution_code": "age = 14\nprint(\"Next year: \" + str(age + 1))",
           "input_values": "",
           "points": 15,
-          "chapter_id": "c15",
-          "chapter_title": "Errors and debugging",
           "walkthrough": [
             "age is an integer, and \"Next year: \" is text; Python cannot join them directly with +.",
             "Convert the number with str(...) or use an f-string once you know that pattern."
-          ]
+          ],
+          "chapter_id": "c15",
+          "chapter_title": "Errors and debugging"
         },
         {
           "id": "c15-l04",
@@ -1528,12 +1528,12 @@
           "solution_code": "try:\n    number = int(\"hello\")\n    print(number)\nexcept ValueError:\n    print(\"Please use digits\")",
           "input_values": "",
           "points": 15,
-          "chapter_id": "c15",
-          "chapter_title": "Errors and debugging",
           "walkthrough": [
             "Python tries the instructions inside try first.",
             "If int(\"hello\") raises ValueError, Python jumps to the matching except block and prints a helpful message."
-          ]
+          ],
+          "chapter_id": "c15",
+          "chapter_title": "Errors and debugging"
         },
         {
           "id": "c15-p15",
@@ -1550,12 +1550,12 @@
           "solution_code": "try:\n    number = int(\"oops\")\n    print(number)\nexcept ValueError:\n    print(\"Invalid number\")",
           "input_values": "",
           "points": 40,
-          "chapter_id": "c15",
-          "chapter_title": "Errors and debugging",
           "walkthrough": [
             "int(\"oops\") cannot turn those letters into a number, so it raises ValueError.",
             "The except ValueError block catches that expected problem and prints Invalid number instead of stopping the program."
-          ]
+          ],
+          "chapter_id": "c15",
+          "chapter_title": "Errors and debugging"
         }
       ]
     },
@@ -1579,12 +1579,12 @@
           "solution_code": "import math\nprint(math.sqrt(144))",
           "input_values": "",
           "points": 15,
-          "chapter_id": "c16",
-          "chapter_title": "Tools and bigger ideas",
           "walkthrough": [
             "import math loads Python's math toolbox.",
             "math.sqrt(144) asks that toolbox for the square root of 144, which is 12.0."
-          ]
+          ],
+          "chapter_id": "c16",
+          "chapter_title": "Tools and bigger ideas"
         },
         {
           "id": "c16-l02",
@@ -1601,12 +1601,12 @@
           "solution_code": "numbers = [2, 8, 9, 1]\ncount = 0\nfor number in numbers:\n    if number > 5:\n        count = count + 1\nprint(count)",
           "input_values": "",
           "points": 15,
-          "chapter_id": "c16",
-          "chapter_title": "Tools and bigger ideas",
           "walkthrough": [
             "The loop checks each number, and the if condition decides whether it matches.",
             "Increase count only inside the matching branch, then print the final count after the loop."
-          ]
+          ],
+          "chapter_id": "c16",
+          "chapter_title": "Tools and bigger ideas"
         },
         {
           "id": "c16-l03",
@@ -1623,12 +1623,12 @@
           "solution_code": "class Robot:\n    pass\nbot = Robot()\nprint(type(bot).__name__)",
           "input_values": "",
           "points": 15,
-          "chapter_id": "c16",
-          "chapter_title": "Tools and bigger ideas",
           "walkthrough": [
             "class Robot: defines a blueprint; bot = Robot() creates one object from it.",
             "pass is a temporary placeholder because this first class has no instructions inside yet."
-          ]
+          ],
+          "chapter_id": "c16",
+          "chapter_title": "Tools and bigger ideas"
         },
         {
           "id": "c16-p16",
@@ -1645,12 +1645,12 @@
           "solution_code": "class Pet:\n    def __init__(self, name):\n        self.name = name\n        self.happiness = 0\n    def play(self):\n        self.happiness = self.happiness + 1\npet = Pet(\"Luna\")\npet.play()\npet.play()\nprint(f\"{pet.name}: {pet.happiness}\")",
           "input_values": "",
           "points": 40,
-          "chapter_id": "c16",
-          "chapter_title": "Tools and bigger ideas",
           "walkthrough": [
             "__init__ runs when Pet(\"Luna\") creates the object and stores its name and starting happiness.",
             "Each pet.play() call adds 1 to that pet's happiness. Call it twice before printing the final value."
-          ]
+          ],
+          "chapter_id": "c16",
+          "chapter_title": "Tools and bigger ideas"
         }
       ]
     }
