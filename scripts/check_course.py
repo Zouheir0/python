@@ -20,6 +20,12 @@ early_code = '\n'.join(a.get(field, '') for a in activities if a['chapter_id'] i
 assert 'f"' not in early_code and "f'" not in early_code, 'An f-string appears before Chapter 4 teaches it'
 assert '+=' not in all_code and '-=' not in all_code, 'Unexplained augmented assignment remains in the curriculum'
 
+app_js = (ROOT / 'app.js').read_text(encoding='utf-8')
+assert 'const previousUserId = state.user?.id || null;' in app_js, 'Auth changes must detect a different signed-in user'
+assert 'if (state.user?.id !== userId) return;' in app_js, 'Stale cloud requests must not overwrite another account'
+assert "eq('user_id', userId)" in app_js and "eq('id', userId)" in app_js, 'Cloud progress queries must use a captured user ID'
+assert 'state.profile = null;' in app_js and 'state.cloudCompleted = new Set();' in app_js, 'Account switches must clear previous account state'
+
 failed = []
 for activity in activities:
     output = io.StringIO()
