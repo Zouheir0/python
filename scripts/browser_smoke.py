@@ -16,7 +16,7 @@ def wait_for_text(locator, text, timeout=90):
         try:
             last = locator.inner_text(timeout=500)
             if text in last: return last
-            if any(marker in last for marker in ('Could not download the Python engine', 'Python module worker failed', 'The Python engine script did not load')):
+            if any(marker in last for marker in ('Python runtime could not load from any supported CDN', 'Python module worker failed', 'The Python engine script did not load')):
                 raise AssertionError(f'Python runtime failed before producing output: {last}')
         except Exception: pass
         time.sleep(0.25)
@@ -40,7 +40,7 @@ def main():
         threading.Thread(target=server.serve_forever, daemon=True).start()
         url = f"http://127.0.0.1:{server.server_address[1]}/index.html"
         with sync_playwright() as p:
-            launch_args = {"headless": True, "args": ["--no-sandbox", "--disable-dev-shm-usage", "--no-proxy-server"]}
+            launch_args = {"headless": True, "args": ["--no-sandbox", "--disable-dev-shm-usage"]}
             system_chromium = os.environ.get("CHROMIUM_PATH") or ("/usr/bin/chromium" if Path("/usr/bin/chromium").exists() else None)
             try: browser = p.chromium.launch(**launch_args)
             except PlaywrightError:

@@ -9,7 +9,7 @@
 - An open sandbox with real Python through Pyodide. Code runs in a disposable Web Worker and times out after six seconds.
 - XP and levels, saved locally when no account backend is configured.
 - Optional Supabase accounts, profile settings, cloud progress, password reset, account deletion, and a real opt-in leaderboard.
-- Privacy policy, terms, and a 12-area security audit based on the supplied checklist.
+- Privacy policy, terms, and automated database-permission and browser-runtime checks.
 
 ## Run locally
 
@@ -57,7 +57,7 @@ The backend is optional until you want accounts and cross-device progress. Do no
    ```
 
    `APP_ORIGIN` is the **origin only**, without the repository path or trailing slash. For a GitHub Pages project site it is `https://YOUR-USERNAME.github.io`. For a custom domain, use that domain's origin. Supabase normally supplies `SUPABASE_URL`, `SUPABASE_ANON_KEY`, and `SUPABASE_SERVICE_ROLE_KEY` to Edge Functions; confirm those server-side values are present in the deployed function environment. Do not paste the service-role key into the command line, browser, or GitHub. If your Supabase project requires setting it explicitly, set it only through Supabase's function secrets interface.
-7. Run every item in `SECURITY_AUDIT.md` with two test accounts before inviting students. Make the public-leaderboard choice **off by default** and verify opting out removes a student from the leaderboard.
+7. Before inviting students, test account creation, profile editing, password resets, account deletion, and leaderboard opt-in with two separate test accounts.
 
 ### Important limitation about XP
 
@@ -79,7 +79,7 @@ Run `python scripts/check_course.py` to test every one of the 68 authored soluti
 
 ## Security documentation
 
-Read [`SECURITY_AUDIT.md`](SECURITY_AUDIT.md) before launch. Its checks are a source-level review and test plan, not a penetration-test certificate. A live review of database policies, Auth settings, DNS, and HTTP response headers remains necessary after deployment.
+Automated tests cover course output, database permissions, and browser runtime behavior. They do not replace live validation of Supabase Auth settings and deployed-domain configuration.
 
 ## Attribution and license
 
