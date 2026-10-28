@@ -63,8 +63,19 @@ def main():
                 page.locator(".brand-title").wait_for(state="visible")
                 assert "Python Path" in page.title()
                 page.locator('button[data-action="open-activity"]').first.click()
+                assert "Read it like a detective" in page.locator(".code-walkthrough").inner_text()
                 page.get_by_role("button", name="Run example").click()
                 wait_for_text(page.locator("#example-console"), "Hello, world!")
+                page.locator('button[data-action="toggle-solution"]').click()
+                page.locator('button[data-action="use-solution"]').click()
+                page.locator('button[data-action="check-code"]').click()
+                wait_for_text(page.locator("#challenge-feedback"), "8 of 15")
+                assert page.locator("#top-xp").inner_text().strip() == "8 XP"
+                page.locator('button[data-action="reset-code"]').click()
+                page.locator("#code-editor").fill('print("I wrote my first line!")')
+                page.locator('button[data-action="check-code"]').click()
+                wait_for_text(page.locator("#challenge-feedback"), "7 XP bonus")
+                assert page.locator("#top-xp").inner_text().strip() == "15 XP"
                 page.locator('button.nav-button[data-view="sandbox"]').click()
                 page.locator("#sandbox-code").fill("print(2 + 5)")
                 page.locator('button[data-action="sandbox-run"]').click()
@@ -91,7 +102,7 @@ def main():
                 page.locator('button.nav-button[data-view="leaderboard"]').click()
                 assert "Leaderboard" in page.locator("#app").inner_text()
                 assert not page_errors, f"Uncaught browser errors: {page_errors}"
-                print("PASS: real Python runs in lessons/sandbox; text-vs-math and case sensitivity work; infinite-loop timeout recovers; key views render")
+                print("PASS: guided lessons render; solution gives half XP, independent retry upgrades to full XP; Python sandbox, errors, timeout recovery, and key views work")
             finally:
                 browser.close()
                 server.shutdown()
