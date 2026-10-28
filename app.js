@@ -1,0 +1,471 @@
+import { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from './config.js';
+
+const PYODIDE_VERSION = 'v314.0.7';
+const LOCAL_KEY = 'python-path-local-v2';
+const DRAFT_KEY = 'python-path-drafts-v2';
+const $ = (selector, root = document) => root.querySelector(selector);
+const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
+const esc = (value) => String(value ?? '').replace(/[&<>"']/g, (ch) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' })[ch]);
+const cleanOutput = (value) => String(value ?? '').replace(/\r\n?/g, '\n').replace(/\n+$/g, '');
+const validUsername = (name) => /^[a-zA-Z0-9_]{3,20}$/.test(name);
+
+const state = {
+  chapters: [], activities: [], view: 'learn', chapterId: null, activityId: null,
+  user: null, session: null, profile: null, supabase: null, backendError: '',
+  local: loadLocal(), cloudCompleted: new Set(), accountTab: 'signin', recoveryMode: false,
+  running: false, lastRun: null, hintOpen: false, solutionOpen: false,
+  search: '', referenceSearch: '', leaderboardRows: [], leaderboardError: '',
+  notice: '', noticeKind: 'info',
+};
+
+function loadLocal() {
+  try {
+    const value = JSON.parse(localStorage.getItem(LOCAL_KEY) || '{"completed":[]}');
+    return { completed: Array.isArray(value.completed) ? value.completed.filter((id) => typeof id === 'string') : [] };
+  } catch { return { completed: [] }; }
+}
+function saveLocal() { try { localStorage.setItem(LOCAL_KEY, JSON.stringify(state.local)); } catch {} }
+function loadDrafts() { try { return JSON.parse(localStorage.getItem(DRAFT_KEY) || '{}'); } catch { return {}; } }
+function saveDraft(id, code, inputs) {
+  const drafts = loadDrafts(); drafts[id] = { code, inputs }; try { localStorage.setItem(DRAFT_KEY, JSON.stringify(drafts)); } catch {}
+}
+function getDraft(id) { return loadDrafts()[id] || null; }
+function allActivities() { return state.chapters.flatMap((chapter) => chapter.activities); }
+function currentActivity() { return state.activities.find((item) => item.id === state.activityId) || null; }
+function doneSet() { return state.user ? state.cloudCompleted : new Set(state.local.completed); }
+function isDone(id) { return doneSet().has(id); }
+function totalCount() { return state.activities.length; }
+function completeCount() { return state.activities.filter((a) => isDone(a.id)).length; }
+function pointsFor(ids) { const set = ids instanceof Set ? ids : new Set(ids); return state.activities.reduce((sum, a) => sum + (set.has(a.id) ? a.points : 0), 0); }
+function localXP() { return pointsFor(state.local.completed); }
+function currentXP() { return state.user ? Number(state.profile?.xp || 0) : localXP(); }
+function currentLevel() { return Math.floor(currentXP() / 100) + 1; }
+function levelProgress() { return currentXP() % 100; }
+function nextActivity(activity) { const index = state.activities.findIndex((a) => a.id === activity.id); return state.activities[index + 1] || null; }
+function prevActivity(activity) { const index = state.activities.findIndex((a) => a.id === activity.id); return state.activities[index - 1] || null; }
+function chapterActivityCount(chapter) { return chapter.activities.filter((a) => isDone(a.id)).length; }
+function configured() { return /^https:\/\//.test(SUPABASE_URL) && SUPABASE_PUBLISHABLE_KEY.length > 20 && !SUPABASE_URL.includes('YOUR_PROJECT'); }
+function showNotice(message, kind='info') { state.notice = message; state.noticeKind = kind; }
+function clearNotice() { state.notice = ''; state.noticeKind = 'info'; }
+
+async function init() {
+  try {
+    const response = await fetch('./curriculum.json', { cache: 'no-cache' });
+    if (!response.ok) throw new Error(`Could not load course content (${response.status}).`);
+    const data = await response.json();
+    state.chapters = data.chapters || [];
+    state.activities = allActivities();
+    if (!state.activities.length) throw new Error('The course content is empty.');
+  } catch (error) {
+    $('#app').innerHTML = `<main class="main"><h1>Python Path could not start</h1><p>${esc(error.message)}</p><p>Open this website through GitHub Pages or a local web server, not as a standalone file URL, so the course data can load.</p></main>`;
+    return;
+  }
+  await initBackend();
+  render();
+  if (state.user) await refreshCloudProgress(false);
+  await maybeLoadLeaderboard(false);
+}
+
+async function initBackend() {
+  if (!configured()) return;
+  try {
+    const { createClient } = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/+esm');
+    state.supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+      auth: { autoRefreshToken: true, persistSession: true, detectSessionInUrl: true },
+      global: { headers: { 'X-Client-Info': 'python-path-web' } },
+    });
+    const { data, error } = await state.supabase.auth.getSession();
+    if (error) throw error;
+    state.session = data.session;
+    state.user = data.session?.user || null;
+    if (state.user) await refreshProfile();
+    state.supabase.auth.onAuthStateChange((event, session) => {
+      state.session = session;
+      state.user = session?.user || null;
+      state.recoveryMode = event === 'PASSWORD_RECOVERY';
+      if (!state.user) { state.profile = null; state.cloudCompleted = new Set(); }
+      // Defer async calls so the auth event handler does not block Supabase's auth lock.
+      queueMicrotask(async () => {
+        if (state.user) await refreshCloudProgress(false);
+        if (state.view === 'account' || event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'PASSWORD_RECOVERY') render();
+        updateHeaderStats();
+      });
+    });
+  } catch (error) {
+    state.supabase = null;
+    state.backendError = error.message || 'The online account service could not be loaded.';
+  }
+}
+
+async function refreshProfile() {
+  if (!state.supabase || !state.user) return;
+  const { data, error } = await state.supabase.from('profiles').select('id,username,xp,leaderboard_public').eq('id', state.user.id).maybeSingle();
+  if (error) throw error;
+  state.profile = data;
+}
+async function refreshCloudProgress(shouldRender = true) {
+  if (!state.supabase || !state.user) return;
+  try {
+    const [{ data: completed, error: completedError }, { data: profile, error: profileError }] = await Promise.all([
+      state.supabase.from('lesson_completions').select('lesson_id').eq('user_id', state.user.id),
+      state.supabase.from('profiles').select('id,username,xp,leaderboard_public').eq('id', state.user.id).maybeSingle(),
+    ]);
+    if (completedError) throw completedError;
+    if (profileError) throw profileError;
+    state.cloudCompleted = new Set((completed || []).map((row) => row.lesson_id));
+    state.profile = profile;
+    if (shouldRender) render(); else updateHeaderStats();
+  } catch (error) {
+    state.backendError = error.message || 'Could not load account progress.';
+  }
+}
+
+function navButton(view, label, icon) {
+  return `<button class="nav-button ${state.view === view || (view === 'learn' && ['chapter','activity'].includes(state.view)) ? 'active' : ''}" data-action="navigate" data-view="${view}"><span class="nav-icon" aria-hidden="true">${icon}</span><span>${label}</span></button>`;
+}
+function renderShell(content) {
+  const xp = currentXP();
+  const name = state.profile?.username || state.user?.email?.split('@')[0] || 'Learner';
+  return `<div class="app-shell">
+    <header class="topbar">
+      <a href="#" class="brand" data-action="navigate" data-view="learn" aria-label="Python Path home"><span class="brand-mark">Py</span><span><span class="brand-title">PYTHON PATH</span><span class="brand-sub" style="display:block">Learn by writing code</span></span></a>
+      <div class="top-right"><span class="top-stat">LEVEL <strong id="top-level">${currentLevel()}</strong></span><span class="top-stat"><strong id="top-xp">${xp} XP</strong></span><button class="button quiet" data-action="navigate" data-view="account">${state.user ? esc(name) : 'Sign in'}</button></div>
+    </header>
+    <aside class="sidebar"><div><div class="nav-label">Learning</div><nav class="nav-list" aria-label="Main navigation">${navButton('learn','Course path','01')}${navButton('sandbox','Code sandbox','⌘')}${navButton('reference','Python reference','Aa')}</nav></div><div><div class="nav-label">Community</div><nav class="nav-list" aria-label="Community navigation">${navButton('leaderboard','Leaderboard','#')}${navButton('account','Account','@')}</nav></div><div class="sidebar-bottom">${navButton('privacy','Privacy policy','i')}${navButton('terms','Terms & conditions','§')}${navButton('security','Security review','✓')}<div class="sidebar-note">Created by <strong>Zouheir Ghosn</strong>.<br>Progress saves in this browser or your account.</div></div></aside>
+    <main class="main" id="main-content">${content}${renderFooter()}</main>
+  </div>`;
+}
+function renderFooter() {
+  return `<footer class="footer"><span>Python Path · Created by Zouheir Ghosn</span><div class="footer-links"><button data-action="navigate" data-view="privacy">Privacy policy</button><button data-action="navigate" data-view="terms">Terms &amp; conditions</button><button data-action="navigate" data-view="security">Security review</button></div></footer>`;
+}
+function render() {
+  let content = '';
+  switch (state.view) {
+    case 'learn': content = renderLearn(); break;
+    case 'chapter': content = renderChapter(); break;
+    case 'activity': content = renderActivity(); break;
+    case 'sandbox': content = renderSandbox(); break;
+    case 'leaderboard': content = renderLeaderboard(); break;
+    case 'account': content = renderAccount(); break;
+    case 'reference': content = renderReference(); break;
+    case 'privacy': content = renderPrivacy(); break;
+    case 'terms': content = renderTerms(); break;
+    case 'security': content = renderSecurity(); break;
+    default: content = renderLearn();
+  }
+  $('#app').innerHTML = renderShell(content);
+  bindCurrentView();
+}
+function renderLearn() {
+  const completed = completeCount();
+  const pct = Math.round(completed / Math.max(1,totalCount()) * 100);
+  const next = state.activities.find((activity) => !isDone(activity.id)) || state.activities[0];
+  const filtered = state.chapters.filter((chapter) => `${chapter.title} ${chapter.desc} ${chapter.activities.map(a=>a.title).join(' ')}`.toLowerCase().includes(state.search.toLowerCase()));
+  return `<div class="eyebrow">Your learning path</div><h1 class="page-title">Learn Python by writing Python.</h1><p class="lead">Short explanations, runnable examples, and projects you actually code yourself. Start from zero, then build up to functions, data, debugging, and objects.</p>
+    <div class="hero-grid"><section class="hero"><span class="tag green">START HERE</span><h2>${completed === 0 ? 'One small idea. One line of code.' : completed === totalCount() ? 'You finished every activity.' : 'Ready for the next small win?'}</h2><p>${completed === 0 ? 'You do not need to know anything about programming. Read the idea, run a small example, then type your own code and run it.' : completed === totalCount() ? 'You can keep experimenting in the sandbox, or revisit a project and make it your own.' : `Continue with “${esc(next.title)}”. Every chapter includes a project to combine what you just learned.`}</p><div class="button-row"><button class="button primary" data-action="open-activity" data-id="${next.id}">${completed === totalCount() ? 'Practice in sandbox' : 'Continue learning'} →</button><button class="button quiet" data-action="navigate" data-view="sandbox">Open code sandbox</button></div></section>
+    <section class="panel progress-panel"><div class="eyebrow">Your progress</div><div class="progress-number">${completed}<span class="muted" style="font-size:15px;font-weight:600"> / ${totalCount()}</span></div><div class="small">coding activities completed</div><div class="progress-track"><div class="progress-fill" style="width:${pct}%"></div></div><div class="progress-labels"><span>${pct}% finished</span><span>${totalCount()-completed} left</span></div><div class="stats-row"><div class="stat-box"><strong>${currentXP()}</strong><span>XP earned</span></div><div class="stat-box"><strong>${currentLevel()}</strong><span>current level</span></div><div class="stat-box"><strong>${state.chapters.length}</strong><span>chapters</span></div></div><p class="small" style="margin-top:12px">${state.user ? 'Cloud progress is connected to your account.' : 'Your progress is saved on this device. Sign in to sync it across devices.'}</p></section></div>
+    <div class="section-heading"><div><h2>Course chapters</h2><p class="small" style="margin:4px 0 0">Lessons move from beginner basics to more advanced projects.</p></div><span class="tag">${totalCount()} activities</span></div>
+    <div class="search-row"><input class="search-input" id="course-search" type="search" placeholder="Find a chapter or skill..." value="${esc(state.search)}" aria-label="Search chapters"></div>
+    <div class="chapter-grid">${filtered.map((chapter, index) => {
+      const done = chapterActivityCount(chapter); const total=chapter.activities.length; const percentage=Math.round(done/total*100);
+      return `<button class="chapter-card" data-action="open-chapter" data-id="${chapter.id}"><div class="card-top"><span class="chapter-no">CHAPTER ${String(state.chapters.indexOf(chapter)+1).padStart(2,'0')}</span><span class="tag ${done===total?'green':''}">${done===total?'Complete':`${done}/${total}`}</span></div><h3>${esc(chapter.title)}</h3><p>${esc(chapter.desc)}</p><div class="mini-track"><span style="width:${percentage}%"></span></div><div class="card-bottom"><span>${total-1} lessons + project${total-1===1?'':'s'}</span><span>${percentage}%</span></div></button>`;
+    }).join('') || '<div class="empty">No chapter matches that search.</div>'}</div>`;
+}
+function renderChapter() {
+  const chapter = state.chapters.find((c) => c.id === state.chapterId) || state.chapters[0];
+  const done = chapterActivityCount(chapter);
+  return `<div class="eyebrow">Chapter ${String(state.chapters.indexOf(chapter)+1).padStart(2,'0')}</div><h1 class="page-title">${esc(chapter.title)}</h1><p class="lead">${esc(chapter.desc)}</p><div class="chapter-actions"><button class="button quiet" data-action="navigate" data-view="learn">← All chapters</button><button class="button primary" data-action="open-activity" data-id="${(chapter.activities.find(a=>!isDone(a.id))||chapter.activities[0]).id}">Start next activity →</button></div><section class="panel" style="padding:14px 16px;margin-bottom:14px"><div class="progress-labels"><span>${done} of ${chapter.activities.length} complete</span><span>${chapter.activities.reduce((n,a)=>n+a.points,0)} possible XP</span></div><div class="progress-track"><div class="progress-fill" style="width:${Math.round(done/chapter.activities.length*100)}%"></div></div><p class="small">Each activity has an editable code editor. After a few lessons, you will make a small project that combines the ideas.</p></section><div class="activity-list">${chapter.activities.map((a,i)=>`<button class="activity-row" data-action="open-activity" data-id="${a.id}"><span class="activity-index ${isDone(a.id)?'done':''}">${isDone(a.id)?'✓':String(i+1).padStart(2,'0')}</span><span class="activity-copy"><span class="activity-title">${esc(a.title)}</span><span class="activity-sub">${a.kind==='project'?'Put your skills together in a project.':'Learn one new idea and practise it in code.'}</span></span><span class="activity-right"><span class="tag ${a.kind==='project'?'gold':''}">${a.kind==='project'?'PROJECT':'LESSON'}</span><span>+${a.points} XP</span><span>→</span></span></button>`).join('')}</div>`;
+}
+function renderActivity() {
+  const activity = currentActivity();
+  if (!activity) { state.view='learn'; return renderLearn(); }
+  const chapter = state.chapters.find((c) => c.id === activity.chapter_id);
+  const idx = chapter.activities.findIndex((a)=>a.id===activity.id);
+  const prev = prevActivity(activity); const next=nextActivity(activity);
+  const draft = getDraft(activity.id);
+  const starter = draft?.code ?? activity.starter_code;
+  const inputValues = draft?.inputs ?? activity.input_values ?? '';
+  return `<div class="eyebrow">${esc(chapter.title)} / ${activity.kind==='project'?'Project':'Lesson'} ${idx+1}</div><section class="activity-layout"><article class="panel lesson-text"><div class="lesson-heading"><div><span class="tag ${activity.kind==='project'?'gold':'green'}">${activity.kind==='project'?'MINI PROJECT':'ONE SMALL IDEA'}</span><h1>${esc(activity.title)}</h1><p class="small">${esc(chapter.title)} · ${activity.points} XP on completion</p></div><span class="tag ${isDone(activity.id)?'green':''}">${isDone(activity.id)?'Complete':'In progress'}</span></div><p class="lesson-concept">${esc(activity.concept)}</p><div class="analogy"><strong>Picture it:</strong> ${esc(activity.analogy)}</div>
+  <div class="section-heading" style="margin-top:21px"><div><h2>See an example</h2><p class="small" style="margin:3px 0 0">Run this small example and compare it with the result.</p></div></div><pre class="demo-code">${esc(activity.example_code)}</pre><div class="button-row"><button class="button" data-action="run-example" ${state.running?'disabled':''}>Run example</button><span class="small">Runs in your browser, not on a server.</span></div><div class="demo-output placeholder" id="example-console" aria-live="polite">Press Run example to see the result.</div>
+  <div class="section-heading" style="margin-top:22px"><div><h2>Your turn</h2><p class="small" style="margin:3px 0 0">The goal is to change or write code, not select an answer.</p></div></div><div class="task-box"><div class="task-label">Coding challenge</div><p>${esc(activity.task)}</p></div><p class="small">Run your code. If the output matches the goal, you earn XP and unlock the next step. If it does not, you can try again.</p>
+  <div class="lesson-meta"><button class="button quiet" data-action="open-chapter" data-id="${chapter.id}">Back to chapter</button><div class="button-row">${prev?`<button class="button quiet" data-action="open-activity" data-id="${prev.id}">← Previous</button>`:''}${next?`<button class="button primary" data-action="open-activity" data-id="${next.id}">Next →</button>`:''}</div></div>
+  </article><aside class="panel editor-card"><div class="editor-head"><div><h2>Code editor</h2><div class="editor-help">Type, edit, or delete anything. Use Tab for 4 spaces. Ctrl/⌘ + Enter runs your code.</div></div><span class="tag">Python</span></div><label class="input-label" for="code-editor">Your code</label><textarea class="code-editor" id="code-editor" spellcheck="false" autocomplete="off" autocapitalize="off" aria-label="Write your Python code">${esc(starter)}</textarea>
+  <details class="input-details" ${activity.input_values ? 'open' : ''}><summary class="input-label">Input values for input() <span class="small">(one answer per line)</span></summary><textarea class="input-editor" id="input-values" spellcheck="false" aria-label="Values provided to input function">${esc(inputValues)}</textarea></details>
+  <div class="button-row" style="margin-top:12px"><button class="button primary" data-action="check-code" ${state.running?'disabled':''}>▶ Run &amp; check</button><button class="button" data-action="run-custom" ${state.running?'disabled':''}>Run only</button><button class="button quiet" data-action="reset-code">Reset</button></div>
+  <div class="console-card"><div class="console-head"><span class="console-title">Python console</span><span class="tag" id="run-status">READY</span></div><div class="console-output" id="challenge-console" aria-live="polite">Your output will appear here.</div></div>
+  <div id="challenge-feedback"></div>
+  <div class="button-row" style="margin-top:10px"><button class="button quiet" data-action="toggle-hint">${state.hintOpen?'Hide hint':'Need a hint?'}</button><button class="button quiet" data-action="toggle-solution">${state.solutionOpen?'Hide solution':'Show solution'}</button></div>
+  <div id="hint-holder">${state.hintOpen?`<div class="hint-panel"><strong>Hint:</strong> ${esc(activity.hint)}</div>`:''}</div>${state.solutionOpen?`<div class="hint-panel"><strong>One working solution:</strong><pre class="demo-code">${esc(activity.solution_code)}</pre><button class="button" data-action="use-solution">Put solution in editor</button></div>`:''}
+  ${isDone(activity.id)?`<div class="feedback good">You completed this activity. ${activity.points} XP ${state.user?'is recorded in your account.':'is counted on this device.'}</div>`:''}</aside></section>`;
+}
+function renderSandbox() {
+  const draft = getDraft('sandbox') || {code:`name = input("What is your name? ")\nprint(f"Hello, {name}!")`,inputs:'Python Path'};
+  return `<div class="eyebrow">Practice workspace</div><h1 class="page-title">Code sandbox</h1><p class="lead">Write any Python you want to try. This uses a real Python runtime in your browser. Your code and input are not sent to Python Path servers.</p><section class="activity-layout" style="margin-top:20px"><article class="panel lesson-text"><div class="section-heading" style="margin-top:0"><div><h2>Try a starter program</h2><p class="small" style="margin:4px 0 0">Load a sample if you want an idea, then edit it freely.</p></div></div><div class="button-row"><button class="button" data-action="sandbox-template" data-template="hello">Hello world</button><button class="button" data-action="sandbox-template" data-template="strings">Text vs math</button><button class="button" data-action="sandbox-template" data-template="loops">For loop</button><button class="button" data-action="sandbox-template" data-template="calculator">Calculator</button></div><div class="notice" style="margin-top:16px"><strong>Safe practice tip:</strong> The code runs in a separate browser worker. A long-running program is stopped after a time limit. Do not paste passwords or private information into code.</div><div class="section-heading"><div><h2>What is supported?</h2></div></div><p class="small">Pyodide runs real Python in the browser, including core Python syntax, loops, functions, lists, dictionaries, classes, errors, and standard-library modules. Network access and third-party package installation are not part of this learning workspace.</p></article><aside class="panel editor-card"><div class="editor-head"><div><h2>Sandbox editor</h2><div class="editor-help">Ctrl/⌘ + Enter runs the program.</div></div><span class="tag">Python</span></div><label class="input-label" for="sandbox-code">Your code</label><textarea id="sandbox-code" class="code-editor" spellcheck="false" autocapitalize="off" aria-label="Sandbox Python editor">${esc(draft.code)}</textarea><label class="input-label" for="sandbox-input">Input values for input() <span class="small">(one answer per line)</span></label><textarea id="sandbox-input" class="input-editor" spellcheck="false">${esc(draft.inputs)}</textarea><div class="button-row" style="margin-top:12px"><button class="button primary" data-action="sandbox-run">▶ Run code</button><button class="button quiet" data-action="sandbox-clear">Clear output</button></div><div class="console-card"><div class="console-head"><span class="console-title">Live console</span><span class="tag" id="sandbox-status">READY</span></div><div class="console-output" id="sandbox-output" aria-live="polite">Ready to run your script.</div></div></aside></section>`;
+}
+function renderLeaderboard() {
+  if (!configured()) return `<div class="eyebrow">Community</div><h1 class="page-title">Leaderboard</h1><p class="lead">Compare XP with learners who chose to appear publicly. Real scores will show here after the Supabase setup is completed.</p><div class="notice warn" style="margin-top:18px"><strong>Leaderboard is not connected yet.</strong><p>Configure the Supabase project URL and publishable key in config.js, then run supabase/schema.sql in the Supabase SQL Editor. No fake ranks or placeholder scores are shown.</p></div><div class="button-row" style="margin-top:15px"><button class="button primary" data-action="navigate" data-view="account">Set up student account</button><button class="button quiet" data-action="navigate" data-view="security">Read security review</button></div>`;
+  if (state.leaderboardError) return `<div class="eyebrow">Community</div><h1 class="page-title">Leaderboard</h1><div class="notice warn">Could not load the leaderboard: ${esc(state.leaderboardError)}. Check that schema.sql has been applied and the leaderboard view is readable.</div><button class="button" data-action="reload-leaderboard" style="margin-top:12px">Try again</button>`;
+  const rows=state.leaderboardRows;
+  return `<div class="eyebrow">Community</div><h1 class="page-title">Leaderboard</h1><p class="lead">Students appear here only if they chose to share their username and XP. Email addresses and private lesson history are never shown.</p><div class="button-row" style="margin:18px 0 12px"><button class="button" data-action="reload-leaderboard">Refresh rankings</button><button class="button quiet" data-action="navigate" data-view="account">Privacy and leaderboard settings</button></div><section class="panel" style="overflow:auto"><table class="leaderboard-table"><thead><tr><th>Rank</th><th>Username</th><th>Level</th><th>XP</th></tr></thead><tbody>${rows.map((r,i)=>`<tr class="${state.profile?.username===r.username?'me':''}"><td>${i+1}</td><td>${esc(r.username)}${state.profile?.username===r.username?' (you)':''}</td><td>${Math.floor(Number(r.xp)/100)+1}</td><td>${Number(r.xp)}</td></tr>`).join('')||'<tr><td colspan="4" class="muted">No public scores yet. Finish a coding challenge and opt in from your account settings.</td></tr>'}</tbody></table></section><p class="small" style="margin-top:9px">Rankings are based on completed coding challenges. One activity awards XP only once per account.</p>`;
+}
+function renderAccount() {
+  if (!configured()) return `<div class="eyebrow">Student account</div><h1 class="page-title">Sign in and sync progress</h1><p class="lead">Online accounts and a shared leaderboard need a Supabase project. Until you connect it, your progress is saved locally on this device.</p>${state.backendError?`<div class="notice warn" style="margin-top:15px">${esc(state.backendError)}</div>`:''}<div class="panel" style="padding:18px;margin-top:18px"><h2 style="font-size:16px;margin-top:0">Connect your Supabase project</h2><p class="small">1. Create a project. 2. Run supabase/schema.sql from this repository in the Supabase SQL Editor. 3. Put the project URL and publishable key in config.js. The publishable key can be public when the database policies are correct. Never put a service-role key in browser code.</p><pre class="demo-code">export const SUPABASE_URL = 'https://YOUR_PROJECT.supabase.co';\nexport const SUPABASE_PUBLISHABLE_KEY = 'YOUR_PUBLISHABLE_KEY';</pre><div class="button-row"><button class="button primary" data-action="navigate" data-view="security">Read security checklist</button><a class="button quiet" href="https://supabase.com/dashboard" target="_blank" rel="noopener noreferrer">Open Supabase dashboard</a></div></div><div class="panel" style="padding:18px;margin-top:12px"><h2 style="font-size:15px;margin-top:0">Your current local account</h2><p class="small">No password or email is stored by this app while offline. You have ${state.local.completed.length} locally completed activities and ${localXP()} XP on this browser.</p></div>`;
+  if (state.user) return renderSignedInAccount();
+  if (state.recoveryMode) return `<div class="eyebrow">Account recovery</div><h1 class="page-title">Choose a new password</h1><section class="panel" style="padding:18px;max-width:580px;margin-top:18px"><form id="password-recovery-form" class="form-grid"><div class="form-field full"><label for="recovery-password">New password (at least 10 characters)</label><input id="recovery-password" name="password" type="password" minlength="10" required autocomplete="new-password"></div><div class="form-field full"><button class="button primary" type="submit">Update password</button></div></form><div id="account-message"></div></section>`;
+  const signup=state.accountTab==='signup';
+  return `<div class="eyebrow">Student account</div><h1 class="page-title">${signup?'Create your account':'Welcome back'}</h1><p class="lead">Save progress across devices. You choose whether to share your username and XP on the public leaderboard.</p><div class="tabs"><button class="tab ${!signup?'active':''}" data-action="account-tab" data-tab="signin">Sign in</button><button class="tab ${signup?'active':''}" data-action="account-tab" data-tab="signup">Create account</button></div><section class="panel" style="padding:18px;max-width:620px"><form id="auth-form" class="form-grid">${signup?`<div class="form-field full"><label for="signup-username">Username (3 to 20 letters, numbers, or underscores)</label><input id="signup-username" name="username" minlength="3" maxlength="20" pattern="[A-Za-z0-9_]{3,20}" required autocomplete="username" placeholder="codelearner15"></div>`:''}<div class="form-field full"><label for="auth-email">Email address</label><input id="auth-email" name="email" type="email" required autocomplete="email" maxlength="254"></div><div class="form-field full"><label for="auth-password">Password (at least 10 characters)</label><input id="auth-password" name="password" type="password" required minlength="10" autocomplete="${signup?'new-password':'current-password'}"></div>${signup?`<div class="form-field full"><label class="check-row"><input id="leaderboard-opt-in" type="checkbox"><span>I choose to show my username and XP on the public leaderboard. My email and lesson history will not be public.</span></label></div>`:''}<div class="form-field full"><button class="button primary" type="submit">${signup?'Create account':'Sign in'}</button></div></form><div class="button-row" style="margin-top:10px">${!signup?'<button class="button quiet" data-action="password-reset">Email me a password reset link</button>':''}</div><div id="account-message" style="margin-top:13px"></div></section><p class="small" style="max-width:620px;margin-top:12px">Use a username rather than your real name. Do not share a password with classmates. If you opt into the leaderboard, your username and XP are publicly visible.</p>`;
+}
+function renderSignedInAccount() {
+  const p=state.profile || {};
+  return `<div class="eyebrow">Student account</div><h1 class="page-title">Your account</h1><p class="lead">Your completed lessons and earned XP are saved to this account.</p><div class="hero-grid"><section class="panel" style="padding:18px"><div class="eyebrow">Signed in</div><h2 style="font-size:22px;margin:6px 0">${esc(p.username||'Student')}</h2><p class="small">Email: ${esc(state.user.email||'Not shown publicly')}</p><div class="stats-row"><div class="stat-box"><strong>${Number(p.xp||0)}</strong><span>total XP</span></div><div class="stat-box"><strong>${Math.floor(Number(p.xp||0)/100)+1}</strong><span>level</span></div><div class="stat-box"><strong>${state.cloudCompleted.size}</strong><span>activities complete</span></div></div><div class="button-row" style="margin-top:16px"><button class="button" data-action="sign-out">Sign out</button><button class="button quiet" data-action="navigate" data-view="learn">Back to learning</button></div></section><section class="panel level-card"><div class="level-line"><div><div class="eyebrow">Current level</div><div class="level-number">Level ${Math.floor(Number(p.xp||0)/100)+1}</div></div><span class="tag green">${Number(p.xp||0)} XP</span></div><div class="level-progress"><span style="width:${Number(p.xp||0)%100}%"></span></div><p class="small">${100-(Number(p.xp||0)%100)} XP to the next level.</p></section></div><section class="panel" style="padding:18px;margin-top:14px;max-width:780px"><h2 style="font-size:16px;margin-top:0">Profile and privacy</h2><form id="profile-form" class="form-grid"><div class="form-field full"><label for="profile-username">Public username</label><input id="profile-username" name="username" value="${esc(p.username||'')}" minlength="3" maxlength="20" pattern="[A-Za-z0-9_]{3,20}" required autocomplete="username"></div><div class="form-field full"><label class="check-row"><input id="profile-leaderboard" type="checkbox" ${p.leaderboard_public?'checked':''}><span>Show my username and XP on the public leaderboard. Turn this off to remove my profile from rankings.</span></label></div><div class="form-field full"><button class="button primary" type="submit">Save profile settings</button></div></form><div id="account-message" style="margin-top:12px"></div></section><section class="panel" style="padding:18px;margin-top:14px;max-width:780px"><h2 style="font-size:15px;margin-top:0">Delete account</h2><p class="small">This permanently deletes your account, profile, XP, and cloud lesson history. This action cannot be undone.</p><button class="button danger" data-action="delete-account">Delete my account</button><div id="delete-message" style="margin-top:12px"></div></section>`;
+}
+function renderReference() {
+  const refs=[
+    ['print()','Show values on the console. Quotes make text; no quotes means Python evaluates an expression.','print("2 + 5")  # shows 2 + 5\nprint(2 + 5)      # shows 7'],
+    ['input()','Ask for text typed by the person running the program. The result is a string.','name = input("Name? ")'],
+    ['int() / float() / str()','Convert between types. Invalid numeric text can raise ValueError.','int("14") + 1\nfloat("2.5") * 2\nstr(14)'],
+    ['type()','Ask Python for the type of a value.','type(12)\ntype("12")'],
+    ['len() / sum() / sorted()','Count items, add numbers, or make a sorted copy of a collection.','len([2, 4, 6])\nsum([2, 4, 6])\nsorted([3, 1, 2])'],
+    ['range() / enumerate()','Make number sequences for loops, or get both an index and item.','for n in range(1, 4):\n    print(n)\n\nfor i, item in enumerate(["a", "b"], start=1):\n    print(i, item)'],
+    ['if / elif / else','Choose which indented block runs. Remember the colon and indentation.','if score >= 90:\n    print("A")\nelif score >= 60:\n    print("Pass")\nelse:\n    print("Retry")'],
+    ['for / while','Repeat a block. Ensure a while condition can eventually become false.','for item in ["a", "b"]:\n    print(item)\n\ncount = 0\nwhile count < 2:\n    count += 1'],
+    ['def / return','Define reusable instructions. return sends a value back; print displays it.','def double(number):\n    return number * 2\n\nprint(double(4))'],
+    ['list.append() / list.pop()','Change a list by adding an item or removing and returning one.','items = ["pen"]\nitems.append("book")\nlast = items.pop()'],
+    ['dict.get() / dict.items()','Look up a key with a default or loop through all key-value pairs.','profile.get("age", 0)\nfor key, value in profile.items():\n    print(key, value)'],
+    ['String methods','Change letter case, remove edge whitespace, or test the contents of text.','"Hello".upper()\n" Hello ".strip()\n"py" in "python"'],
+    ['try / except','Handle errors you know how to recover from, rather than hiding every problem.','try:\n    number = int("hello")\nexcept ValueError:\n    print("Please use digits")'],
+    ['import math / random','Use standard-library tools without reimplementing them.','import math\nmath.sqrt(81)\n\nimport random\nrandom.randint(1, 6)'],
+    ['Classes and objects','A class defines attributes and methods for objects created from it.','class Pet:\n    def __init__(self, name):\n        self.name = name\n\npet = Pet("Milo")\nprint(pet.name)'],
+  ];
+  const filtered=refs.filter(r=>(r[0]+' '+r[1]+' '+r[2]).toLowerCase().includes(state.referenceSearch.toLowerCase()));
+  return `<div class="eyebrow">Quick lookup</div><h1 class="page-title">Python reference</h1><p class="lead">A small reference for the syntax taught in the lessons. Try the examples in the Code Sandbox.</p><div class="search-row"><input class="search-input" id="reference-search" type="search" placeholder="Search a function or idea..." value="${esc(state.referenceSearch)}" aria-label="Search Python reference"></div><div class="reference-grid">${filtered.map(([name,desc,code])=>`<article class="panel reference-card"><h3>${esc(name)}</h3><p>${esc(desc)}</p><pre class="demo-code">${esc(code)}</pre><button class="button quiet" data-action="copy-reference" data-code="${esc(code)}">Copy example</button></article>`).join('')||'<div class="empty">No reference entries match that search.</div>'}</div>`;
+}
+function renderPrivacy() {
+  return `<div class="eyebrow">Information / Legal</div><h1 class="page-title">Privacy policy</h1><p class="lead">Plain-language details about what Python Path stores and what other services may receive.</p><div class="legal"><section class="panel"><h2>1. Information collected</h2><p>When online accounts are enabled, Supabase Auth processes the email address and password needed to create and secure an account. Python Path stores a username, XP total, optional public-leaderboard preference, and completed activity IDs. It does not ask for a real name, school, birth date, phone number, or location.</p></section><section class="panel"><h2>2. What is public</h2><p>Only a username and XP appear on the leaderboard, and only for accounts that opt in. Email addresses, account IDs, passwords, and individual lesson histories are not part of the public leaderboard. You can opt out in Account settings.</p></section><section class="panel"><h2>3. Code and input</h2><p>Python code and the input values entered into the editor run in the browser using Pyodide. The app does not intentionally upload student code or sandbox input to Python Path servers. The Python runtime is downloaded from jsDelivr. Do not enter passwords, personal information, or secrets into the editor. Browser extensions and device-level software may behave independently of this site.</p></section><section class="panel"><h2>4. Hosting and infrastructure</h2><p>If hosted by GitHub Pages, GitHub logs visitors’ IP addresses for security purposes. Supabase handles authentication and the account records after the backend is configured. Each provider has its own privacy terms and retention rules.</p></section><section class="panel"><h2>5. Children and students</h2><p>This site is designed for learning. It should not collect more personal information than needed. Before inviting children under 13 in the United States, or launching to children in other jurisdictions, the operator should obtain legal guidance on applicable child-privacy and consent requirements. This policy is not legal advice.</p></section><section class="panel"><h2>6. Your choices and deletion</h2><p>You can opt out of the leaderboard. The account page has a delete-account action when the optional Supabase Edge Function is deployed. Local progress can be removed by clearing this site’s local storage. Contact the site owner if cloud account deletion does not work.</p></section><section class="panel"><h2>7. Changes and contact</h2><p>The operator should update this policy before enabling new data collection, analytics, payments, or third-party services. Created by Zouheir Ghosn. No tracking analytics are added by this project.</p></section></div>`;
+}
+function renderTerms() {
+  return `<div class="eyebrow">Information / Legal</div><h1 class="page-title">Terms &amp; conditions</h1><p class="lead">Use Python Path to learn, experiment, and build projects respectfully.</p><div class="legal"><section class="panel"><h2>1. Educational use</h2><p>The course is a learning aid for beginners. It is not a replacement for the official Python documentation, a full local Python installation, or a teacher’s advice.</p></section><section class="panel"><h2>2. Code execution</h2><p>Python runs locally in your browser’s worker. Long-running code is terminated after a time limit, but no browser-based environment can promise complete isolation from every browser bug or extension. Do not enter secrets or sensitive information. Do not use this sandbox to run harmful code against other people.</p></section><section class="panel"><h2>3. Accounts and XP</h2><p>Account features require a configured Supabase project. XP is a learning progress measure, not a reward with cash value. Deliberate attempts to manipulate rankings may be removed by the site operator. The public leaderboard shows usernames and XP only for users who opted in.</p></section><section class="panel"><h2>4. Availability and warranty</h2><p>The website is provided as-is. Service availability depends on the hosting, browser-runtime CDN, and database providers. External provider outages can interrupt logins or the code editor.</p></section><section class="panel"><h2>5. Attribution</h2><p>This learning application was created by Zouheir Ghosn. Use and redistribution should follow the repository’s license file.</p></section></div>`;
+}
+function renderSecurity() {
+  const items = [
+    ['1. Exposed secrets and keys','Implemented in source: config.js contains empty placeholders only. A Supabase publishable/anon key may be public with correct RLS. Never place service_role keys, database passwords, SMTP credentials, or payment secrets in the repository.'],
+    ['2. Authentication and sessions','Supabase Auth supplies signup, login, password-reset, email confirmation, and session handling. Production settings still need to be configured in your project. Browser sessions are available to JavaScript, so prevent XSS and do not add untrusted scripts.'],
+    ['3. Authorization and data access','Database policies restrict private lesson completions to their owner. XP changes through a database function, not a client-side profile update. Public data is limited to opted-in username and XP.'],
+    ['4. Supabase security','The SQL enables RLS, revokes broad writes, limits public columns through a view, and keeps challenge verification data in a non-exposed schema. The owner must run the SQL and verify it in the live dashboard.'],
+    ['5. Firebase','Not used by this repository. No Firebase configuration or Firebase rules are required.'],
+    ['6. API routes and server logic','GitHub Pages has no private server runtime. A database RPC verifies challenge output and awards XP once. An optional Supabase Edge Function deletes the currently authenticated user only. Never add privileged logic that trusts a client-supplied user ID.'],
+    ['7. Forms and input handling','Usernames have length and character constraints. Challenge output is length-limited and compared server-side. Code results are added as text, not HTML. Browser validation improves usability but is not treated as authorization.'],
+    ['8. Payments and webhooks','No payment processor, purchase flow, or webhook is used. If introduced later, webhook signatures, idempotency, and server-only payment secrets will be required.'],
+    ['9. AI/API cost abuse','No AI API or billable generation endpoint is included. Python execution is local. Supabase Auth and database quotas still need monitoring and provider rate limits should stay enabled.'],
+    ['10. Admin and internal tools','There is no admin route or client-side admin role. Do not add an admin UI that relies on hiding a button; enforce admin privileges on the server/database.'],
+    ['11. Privacy and data handling','Email remains in Supabase Auth; it is not stored in the public profile. Leaderboard visibility requires opt-in. Code and input stay in the browser. The privacy page flags hosting logs and child-privacy review.'],
+    ['12. Deployment and configuration','HTTPS, restrictive CSP meta policy, a dedicated worker, output escaping, and a timeout are included. GitHub Pages cannot set all security response headers, so this is a defense-in-depth layer, not a substitute for host headers. Verify custom domain ownership before connecting DNS.'],
+  ];
+  return `<div class="eyebrow">Launch preparation</div><h1 class="page-title">Security review</h1><p class="lead">A source-level review based on the 12 areas in your audit checklist. This is not a penetration test, and live database rules cannot be verified until you deploy and configure Supabase.</p><div class="notice warn" style="margin-top:16px"><strong>Before public launch:</strong> configure Supabase, run the SQL, enable email confirmation, set allowed redirect URLs, and test with two separate accounts. No security design can guarantee that a website will never be hacked.</div><div class="section-heading"><div><h2>Audit areas</h2><p class="small" style="margin:4px 0 0">What is covered and what still needs live testing.</p></div></div><div class="security-grid">${items.map(([title,desc])=>`<article class="panel security-item"><h3>${esc(title)}</h3><p>${esc(desc)}</p></article>`).join('')}</div><div class="section-heading"><div><h2>Manual tests to run before launch</h2></div></div><section class="panel" style="padding:17px"><ol class="security-checks"><li>Create accounts A and B. Log in as A, complete a lesson, then log in as B. B must not see A’s completion history.</li><li>Using B, attempt to update A’s profile or lesson records through the Supabase API. The database must deny it.</li><li>Attempt to update <code>profiles.xp</code> directly from the browser client. It must fail because only the database function can update XP.</li><li>Call the completion RPC with a wrong output, unknown activity ID, oversized output, and a repeated completion. Wrong and unknown attempts must fail; repeats must not award XP twice.</li><li>Turn off leaderboard opt-in. Confirm the profile disappears from the public leaderboard while the account owner can still view their own settings.</li><li>Open DevTools and search all downloaded files for <code>service_role</code>, database passwords, and private API keys. No real secret may appear.</li><li>Run <code>while True: pass</code> in the code sandbox. The run should time out and the interface should remain responsive.</li><li>Test account signup, email confirmation, password reset, sign-out, deletion, and invalid usernames on the deployed domain.</li><li>Inspect the browser console for CSP violations and the Network tab for unexpected calls. Only necessary CDNs and the configured Supabase endpoint should be used.</li><li>For users under 13, get jurisdiction-specific child-privacy advice before collecting account data or launching publicly.</li></ol></section><p class="small" style="margin-top:14px">Security guidance references: <a href="https://supabase.com/docs/guides/database/postgres/row-level-security" target="_blank" rel="noopener noreferrer">Supabase Row Level Security</a>, <a href="https://cheatsheetseries.owasp.org/cheatsheets/Authorization_Cheat_Sheet.html" target="_blank" rel="noopener noreferrer">OWASP Authorization Cheat Sheet</a>, and <a href="https://cheatsheetseries.owasp.org/cheatsheets/Content_Security_Policy_Cheat_Sheet.html" target="_blank" rel="noopener noreferrer">OWASP Content Security Policy</a>.</p>`;
+}
+
+function bindCurrentView() {
+  const main = $('#main-content');
+  if (!main) return;
+  main.addEventListener('input', (event) => {
+    if (event.target.id === 'course-search') { state.search = event.target.value; const pos=event.target.selectionStart; render(); const field=$('#course-search'); field?.focus(); field?.setSelectionRange(pos,pos); }
+    if (event.target.id === 'reference-search') { state.referenceSearch=event.target.value; const pos=event.target.selectionStart; render(); const field=$('#reference-search'); field?.focus(); field?.setSelectionRange(pos,pos); }
+    if (event.target.id === 'code-editor') { const a=currentActivity(); if(a) saveDraft(a.id,event.target.value,$('#input-values')?.value || a.input_values || ''); }
+    if (event.target.id === 'input-values') { const a=currentActivity(); if(a) saveDraft(a.id,$('#code-editor')?.value || a.starter_code,event.target.value); }
+    if (event.target.id === 'sandbox-code' || event.target.id === 'sandbox-input') saveDraft('sandbox',$('#sandbox-code')?.value || '',$('#sandbox-input')?.value || '');
+  });
+  main.addEventListener('keydown', (event) => {
+    if (event.target.matches('textarea.code-editor') && event.key === 'Tab') {
+      event.preventDefault(); const field=event.target; const start=field.selectionStart,end=field.selectionEnd;
+      if (event.shiftKey) {
+        const lineStart=field.value.lastIndexOf('\n',start-1)+1;
+        if (field.value.slice(lineStart,lineStart+4)==='    ') { field.setRangeText('',lineStart,lineStart+4,'select'); field.setSelectionRange(Math.max(lineStart,start-4),Math.max(lineStart,end-4)); }
+      } else { field.setRangeText('    ',start,end,'end'); }
+      field.dispatchEvent(new Event('input',{bubbles:true}));
+    }
+    if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
+      event.preventDefault(); const button=main.querySelector('[data-action="check-code"]') || main.querySelector('[data-action="sandbox-run"]'); button?.click();
+    }
+  });
+  main.addEventListener('submit', (event) => handleForm(event));
+}
+
+$('#app').addEventListener('click', (event) => {
+  const button = event.target.closest('[data-action]');
+  if (!button || button.disabled) return;
+  void handleAction(button.dataset.action, button);
+});
+async function handleAction(action, button) {
+  const id=button.dataset.id;
+  clearNotice();
+  if (action==='navigate') { state.view=button.dataset.view; state.hintOpen=false; state.solutionOpen=false; render(); window.scrollTo({top:0,behavior:'auto'}); return; }
+  if (action==='open-chapter') { state.chapterId=id; state.view='chapter'; state.hintOpen=false;state.solutionOpen=false;render();window.scrollTo({top:0,behavior:'auto'});return; }
+  if (action==='open-activity') { state.activityId=id; const a=state.activities.find(x=>x.id===id); state.chapterId=a?.chapter_id||null;state.view='activity';state.hintOpen=false;state.solutionOpen=false;state.lastRun=null;render();window.scrollTo({top:0,behavior:'auto'});return; }
+  if (action==='run-example') { await runActivityCode(true,false); return; }
+  if (action==='check-code') { await runActivityCode(false,true); return; }
+  if (action==='run-custom') { await runActivityCode(false,false); return; }
+  if (action==='reset-code') { const a=currentActivity(); if(!a)return; const code=$('#code-editor');const input=$('#input-values');if(code)code.value=a.starter_code;if(input)input.value=a.input_values||'';saveDraft(a.id,a.starter_code,a.input_values||'');const f=$('#challenge-feedback');if(f)f.innerHTML='';const o=$('#challenge-console');if(o)o.textContent='Editor reset to the starter code.';return; }
+  if (action==='toggle-hint') { state.hintOpen=!state.hintOpen; const a=currentActivity(); const holder=$('#hint-holder'); if(holder)holder.innerHTML=state.hintOpen?`<div class="hint-panel"><strong>Hint:</strong> ${esc(a.hint)}</div>`:'';button.textContent=state.hintOpen?'Hide hint':'Need a hint?';return; }
+  if (action==='toggle-solution') { state.solutionOpen=!state.solutionOpen; const a=currentActivity(); render(); return; }
+  if (action==='use-solution') { const a=currentActivity(); const field=$('#code-editor');if(a&&field){field.value=a.solution_code;field.dispatchEvent(new Event('input',{bubbles:true}));}return; }
+  if (action==='sandbox-run') { await runSandbox(); return; }
+  if (action==='sandbox-clear') { const out=$('#sandbox-output');if(out)out.textContent='';return; }
+  if (action==='sandbox-template') { const templates={hello:`print("Hello, world!")`,strings:`print(2 + 5)\nprint("2 + 5")`,loops:`for number in range(1, 6):\n    print(number)`,calculator:`first = float(input("First number: "))\nsecond = float(input("Second number: "))\nprint(f"Total: {first + second}")`};const code=templates[button.dataset.template];if(code!==undefined){$('#sandbox-code').value=code;$('#sandbox-input').value=button.dataset.template==='calculator'?'3\n4':'';saveDraft('sandbox',code,$('#sandbox-input').value);}return; }
+  if (action==='account-tab') { state.accountTab=button.dataset.tab;render();return; }
+  if (action==='sign-out') { if(state.supabase){const {error}=await state.supabase.auth.signOut();if(error){showAccountMessage(error.message,'bad');return;} }state.user=null;state.profile=null;state.session=null;state.cloudCompleted=new Set();state.view='account';render();return; }
+  if (action==='password-reset') { await sendPasswordReset();return; }
+  if (action==='reload-leaderboard') { await maybeLoadLeaderboard(true);render();return; }
+  if (action==='copy-reference') { try { await navigator.clipboard.writeText(button.dataset.code||'');button.textContent='Copied'; } catch { button.textContent='Clipboard blocked'; }return; }
+  if (action==='delete-account') { await deleteAccount();return; }
+}
+
+async function runActivityCode(example, check) {
+  const activity=currentActivity(); if(!activity||state.running)return;
+  const source=example?activity.example_code:($('#code-editor')?.value ?? activity.starter_code);
+  const inputs=example?activity.input_values:($('#input-values')?.value ?? activity.input_values ?? '');
+  if(!example)saveDraft(activity.id,source,inputs);
+  const outputEl=example?$('#example-console'):$('#challenge-console');const status=$('#run-status');const feedback=$('#challenge-feedback');
+  state.running=true;if(status){status.textContent='RUNNING';status.className='tag green';}
+  if(outputEl){outputEl.classList.remove('error');outputEl.textContent='Starting Python in a separate worker...';}
+  if(feedback)feedback.innerHTML='';
+  mainButtonsDisabled(true);
+  const result=await executePython(source,inputs);
+  state.running=false;mainButtonsDisabled(false);
+  if (outputEl) { outputEl.textContent=result.error?`${result.output?result.output+'\n':''}${result.error}`:(result.output||'(No output. Your code ran without printing anything.)');outputEl.classList.toggle('error',Boolean(result.error));outputEl.classList.remove('placeholder'); }
+  if(example) return;
+  if(status){status.textContent=result.error?'ERROR':'FINISHED';status.className=`tag ${result.error?'':'green'}`;}
+  if(result.error){if(check&&feedback)feedback.innerHTML=`<div class="feedback bad"><strong>Your code ran into a Python error.</strong><br>Read the last line first. It usually tells you what to fix. You can edit the code and try again.</div>`;return;}
+  state.lastRun={output:cleanOutput(result.output),source,inputs};
+  if(!check) return;
+  if(cleanOutput(result.output)===cleanOutput(activity.expected_output)) {
+    await completeActivity(activity, cleanOutput(result.output), feedback);
+  } else if(feedback) {
+    feedback.innerHTML=`<div class="feedback bad"><strong>Not quite yet. Your program ran!</strong><br>Compare your output with the target below. Look at spelling, spaces, capital letters, and line breaks. Then edit and run again.</div><details class="hint-panel"><summary>Show target output</summary><pre class="demo-code">${esc(activity.expected_output||'(No output)')}</pre></details>`;
+  }
+}
+function mainButtonsDisabled(disabled) { $$('#main-content button[data-action="check-code"], #main-content button[data-action="run-custom"], #main-content button[data-action="run-example"], #main-content button[data-action="sandbox-run"]').forEach((button)=>button.disabled=disabled); }
+async function executePython(code, inputText='') {
+  return new Promise((resolve) => {
+    let worker; let blobUrl; let timer; let settled=false;
+    const finish=(result)=>{if(settled)return;settled=true;if(timer)clearTimeout(timer);try{worker?.terminate();}catch{}if(blobUrl)URL.revokeObjectURL(blobUrl);resolve(result);};
+    const workerSource = `import { loadPyodide } from "https://cdn.jsdelivr.net/pyodide/${PYODIDE_VERSION}/full/pyodide.mjs";
+      const pyodidePromise = loadPyodide({ indexURL: "https://cdn.jsdelivr.net/pyodide/${PYODIDE_VERSION}/full/" });
+      self.onmessage = async (event) => {
+        const { id, code, inputs } = event.data;
+        try {
+          const pyodide = await pyodidePromise;
+          pyodide.globals.set("_pp_student_code", code);
+          const inputProxy = pyodide.toPy(String(inputs || "").split("\\n"));
+          pyodide.globals.set("_pp_user_inputs", inputProxy);
+          const result = await pyodide.runPythonAsync(\`import builtins, io, sys, traceback\n_pp_old_stdout = sys.stdout\n_pp_old_stderr = sys.stderr\n_pp_old_input = builtins.input\n_pp_console = io.StringIO()\n_pp_error = None\n_pp_lines = list(_pp_user_inputs)\ndef _pp_input(prompt=""):\n    if prompt:\n        _pp_console.write(str(prompt))\n    if not _pp_lines:\n        raise EOFError("No input line was provided. Add an answer in Input values.")\n    _pp_value = _pp_lines.pop(0)\n    _pp_console.write(_pp_value + "\\\\n")\n    return _pp_value\ntry:\n    builtins.input = _pp_input\n    sys.stdout = _pp_console\n    sys.stderr = _pp_console\n    exec(compile(_pp_student_code, "<your code>", "exec"), {"__name__": "__main__"})\nexcept BaseException as _pp_exc:\n    _pp_error = traceback.format_exc()\nfinally:\n    sys.stdout = _pp_old_stdout\n    sys.stderr = _pp_old_stderr\n    builtins.input = _pp_old_input\n{"output": _pp_console.getvalue(), "error": _pp_error}\`);
+          const converted = result.toJs({ dict_converter: Object.fromEntries });
+          result.destroy();
+          inputProxy.destroy();
+          self.postMessage({ id, result: converted });
+        } catch (error) { self.postMessage({ id, result: { output: "", error: String(error?.message || error) } }); }
+      };`;
+    try {
+      const blob = new Blob([workerSource], { type: 'text/javascript' }); blobUrl=URL.createObjectURL(blob); worker=new Worker(blobUrl,{type:'module'});
+      timer=setTimeout(()=>finish({output:'',error:'Execution timed out after 6 seconds. Check that your loop has a stopping condition.'}),6000);
+      worker.onmessage=(event)=>{if(event.data?.id!==1)return;finish(event.data.result||{output:'',error:'Python did not return a result.'});};
+      worker.onerror=(event)=>finish({output:'',error:`Python runtime failed to start: ${event.message||'unknown worker error'}. Check your connection to the runtime CDN.`});
+      worker.postMessage({id:1,code:String(code||''),inputs:String(inputText||'')});
+    } catch (error) { finish({output:'',error:`Could not start the Python worker: ${error.message}`}); }
+  });
+}
+async function completeActivity(activity, output, feedback) {
+  const already=isDone(activity.id);
+  if (state.user && state.supabase) {
+    try {
+      const {data,error}=await state.supabase.rpc('complete_lesson',{p_lesson_id:activity.id,p_output:output});
+      if(error) throw error;
+      await refreshCloudProgress(false);
+      if(feedback)feedback.innerHTML=`<div class="feedback good"><strong>Challenge passed!</strong><br>${data?.awarded?`+${activity.points} XP added to your account.`:'This activity was already completed, so XP was not added a second time.'} ${esc('Nice work. You are building real coding skills.')}</div>`;
+      if(data?.awarded) showLevelFeedback(Number(data.total_xp||state.profile?.xp||0),Number(data.xp_awarded||activity.points),feedback);
+    } catch(error) {
+      if(feedback)feedback.innerHTML=`<div class="feedback bad"><strong>Your code is correct, but cloud progress did not save.</strong><br>${esc(error.message||'Database request failed')}. Keep this page open, check the backend setup, and try again. No online XP was claimed.</div>`;
+    }
+  } else {
+    if(!state.local.completed.includes(activity.id)) { state.local.completed.push(activity.id); saveLocal(); }
+    if(feedback)feedback.innerHTML=`<div class="feedback good"><strong>Challenge passed!</strong><br>${already?'You already completed this activity.':`+${activity.points} XP earned on this device.`} ${state.local.completed.length>0?'Your local progress is saved in this browser.':''}</div>`;
+    if(!already) showLevelFeedback(localXP(),activity.points,feedback);
+  }
+  updateHeaderStats();
+  const badge=$('.lesson-heading .tag:last-child'); if(badge){badge.textContent='Complete';badge.classList.add('green');}
+}
+function showLevelFeedback(xp,awardedPoints,feedback) {
+  const oldLevel=Math.floor(Math.max(0,xp-awardedPoints)/100)+1; const newLevel=Math.floor(xp/100)+1;
+  if(newLevel>oldLevel && feedback){const note=document.createElement('p');note.className='small';note.textContent=`Level up! You reached Level ${newLevel}.`;feedback.append(note);}
+}
+function updateHeaderStats() { const level=$('#top-level');const xp=$('#top-xp');if(level)level.textContent=String(currentLevel());if(xp)xp.textContent=`${currentXP()} XP`; }
+async function runSandbox() {
+  if(state.running)return; const code=$('#sandbox-code')?.value||'';const inputs=$('#sandbox-input')?.value||'';saveDraft('sandbox',code,inputs);
+  const output=$('#sandbox-output');const status=$('#sandbox-status');if(output)output.textContent='Starting Python...';if(status)status.textContent='RUNNING';mainButtonsDisabled(true);state.running=true;
+  const result=await executePython(code,inputs);state.running=false;mainButtonsDisabled(false);
+  if(output){output.textContent=result.error?`${result.output?result.output+'\n':''}${result.error}`:(result.output||'(No output. Your code ran without printing anything.)');output.classList.toggle('error',Boolean(result.error));}if(status){status.textContent=result.error?'ERROR':'FINISHED';status.className=`tag ${result.error?'':'green'}`;}
+}
+
+async function handleForm(event) {
+  const form=event.target; if(!form.id)return; event.preventDefault();
+  if(form.id==='auth-form') { await submitAuth(form); return; }
+  if(form.id==='profile-form') { await saveProfile(form); return; }
+  if(form.id==='password-recovery-form') { await setNewPassword(form); return; }
+}
+async function submitAuth(form) {
+  const box=$('#account-message'); const fd=new FormData(form); const email=String(fd.get('email')||'').trim();const password=String(fd.get('password')||'');
+  if(!state.supabase){showAccountMessage('Online accounts are not configured yet.','bad');return;}
+  if(password.length<10){showAccountMessage('Use a password with at least 10 characters.','bad');return;}
+  try {
+    if(state.accountTab==='signup') {
+      const username=String(fd.get('username')||'').trim().toLowerCase();
+      if(!validUsername(username)){showAccountMessage('Username must be 3 to 20 letters, numbers, or underscores.','bad');return;}
+      const {data,error}=await state.supabase.auth.signUp({email,password,options:{data:{username,leaderboard_public:$('#leaderboard-opt-in')?.checked===true},emailRedirectTo:window.location.href.split('#')[0]}});
+      if(error)throw error;
+      if(data.session){showAccountMessage('Account created. Your profile is ready.','good');state.view='account';await refreshCloudProgress(false);render();}
+      else showAccountMessage('Check your email for the confirmation link. After confirming, return here and sign in.','good');
+    } else {
+      const {data,error}=await state.supabase.auth.signInWithPassword({email,password});if(error)throw error;
+      state.user=data.user;state.session=data.session;await refreshCloudProgress(false);state.view='account';showNotice('Signed in successfully.','good');render();
+    }
+  } catch(error) { showAccountMessage(normalizeAuthError(error.message),'bad'); }
+}
+function normalizeAuthError(message) {
+  const text=String(message||'Request failed.');
+  if(/invalid login credentials/i.test(text))return 'Email or password was not accepted. Check them and try again.';
+  if(/already registered|already exists/i.test(text))return 'That email may already have an account. Try signing in.';
+  if(/username/i.test(text)&&/unique|duplicate/i.test(text))return 'That username is already in use. Choose another one.';
+  return text;
+}
+function showAccountMessage(message,kind='info') { const el=$('#account-message');if(el){el.innerHTML=`<div class="notice ${kind}">${esc(message)}</div>`;} }
+async function saveProfile(form) {
+  const username=String(new FormData(form).get('username')||'').trim().toLowerCase(); const isPublic=$('#profile-leaderboard')?.checked===true;
+  if(!validUsername(username)){showAccountMessage('Username must be 3 to 20 letters, numbers, or underscores.','bad');return;}
+  if(!state.supabase||!state.user)return;
+  try { const {data,error}=await state.supabase.from('profiles').update({username,leaderboard_public:isPublic}).eq('id',state.user.id).select('id,username,xp,leaderboard_public').single();if(error)throw error;state.profile=data;showAccountMessage('Profile settings saved.','good');await maybeLoadLeaderboard(false); }
+  catch(error){showAccountMessage(normalizeAuthError(error.message),'bad');}
+}
+async function sendPasswordReset() {
+  const email=$('#auth-email')?.value.trim();if(!email){showAccountMessage('Enter your email address first.','bad');return;}
+  try {const {error}=await state.supabase.auth.resetPasswordForEmail(email,{redirectTo:window.location.href.split('#')[0]});if(error)throw error;showAccountMessage('If an account uses that email, a password reset link will be sent. Check your inbox.','good');}
+  catch(error){showAccountMessage(error.message||'Could not send a password reset email.','bad');}
+}
+async function setNewPassword(form) {
+  const password=String(new FormData(form).get('password')||'');if(password.length<10){showAccountMessage('Use a password with at least 10 characters.','bad');return;}
+  try {const {error}=await state.supabase.auth.updateUser({password});if(error)throw error;state.recoveryMode=false;showNotice('Password updated. You are signed in.','good');await refreshCloudProgress(false);render();}
+  catch(error){showAccountMessage(error.message||'Could not update password.','bad');}
+}
+async function deleteAccount() {
+  const target=$('#delete-message'); if(!state.supabase||!state.user)return;
+  if(!window.confirm('Permanently delete your account, XP, profile, and cloud lesson history? This cannot be undone.'))return;
+  if(target)target.innerHTML='<div class="notice">Deleting your account...</div>';
+  try {const {data,error}=await state.supabase.functions.invoke('delete-account',{method:'POST'});if(error)throw error;if(data?.error)throw new Error(data.error);await state.supabase.auth.signOut();state.user=null;state.session=null;state.profile=null;state.cloudCompleted=new Set();state.view='account';state.accountTab='signin';showNotice('Your account was deleted.','good');render();}
+  catch(error){if(target)target.innerHTML=`<div class="notice bad">${esc(error.message||'Account deletion failed.')} Make sure the Supabase Edge Function is deployed and configured.</div>`;}
+}
+async function maybeLoadLeaderboard(shouldRender=true) {
+  if(!configured()||!state.supabase)return;
+  try {const {data,error}=await state.supabase.from('leaderboard').select('username,xp').order('xp',{ascending:false}).order('username',{ascending:true}).limit(50);if(error)throw error;state.leaderboardRows=data||[];state.leaderboardError='';}
+  catch(error){state.leaderboardError=error.message||'Leaderboard query failed.';}
+  if(shouldRender&&state.view==='leaderboard')render();
+}
+
+await init();
