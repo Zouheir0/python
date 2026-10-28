@@ -17,7 +17,7 @@ const state = {
   chapters: [], activities: [], view: 'learn', chapterId: null, activityId: null,
   user: null, session: null, profile: null, supabase: null, backendError: '',
   local: loadLocal(), cloudCompleted: new Set(), accountTab: 'signin', recoveryMode: false,
-  running: false, lastRun: null, hintOpen: false, solutionOpen: false, solutionUsed: false,
+  running: false, cancelExecution: null, lastRun: null, hintOpen: false, solutionOpen: false, solutionUsed: false,
   search: '', referenceSearch: '', leaderboardRows: [], leaderboardError: '',
   notice: '', noticeKind: 'info',
 };
@@ -227,7 +227,6 @@ function renderActivity() {
   const prev = prevActivity(activity); const next=nextActivity(activity);
   const draft = getDraft(activity.id);
   const starter = draft?.code ?? activity.starter_code;
-  const inputValues = draft?.inputs ?? activity.input_values ?? '';
   state.solutionUsed = Boolean(draft?.usedSolution);
   return `<div class="eyebrow">${esc(chapter.title)} / ${activity.kind==='project'?'Project':'Lesson'} ${idx+1}</div><section class="activity-layout"><article class="panel lesson-text"><div class="lesson-heading"><div><span class="tag ${activity.kind==='project'?'gold':'green'}">${activity.kind==='project'?'MINI PROJECT':'ONE SMALL IDEA'}</span><h1>${esc(activity.title)}</h1><p class="small">${esc(chapter.title)} · up to ${activity.points} XP</p></div><span class="tag ${isDone(activity.id)?'green':''}">${isDone(activity.id)?'Complete':'In progress'}</span></div><p class="lesson-concept">${esc(activity.concept)}</p><div class="analogy"><strong>Picture it:</strong> ${esc(activity.analogy)}</div>
   <section class="code-walkthrough"><div class="eyebrow">Decode the code</div><h2>Read it like a detective</h2><ol>${(activity.walkthrough || []).map((step) => `<li>${esc(step)}</li>`).join("")}</ol><p class="small">Try explaining these steps in your own words before moving on.</p></section>
@@ -235,12 +234,11 @@ function renderActivity() {
   <div class="section-heading" style="margin-top:21px"><div><h2>See an example</h2><p class="small" style="margin:3px 0 0">Run this small example and compare it with the result.</p></div></div><pre class="demo-code">${esc(activity.example_code)}</pre><div class="button-row"><button class="button" data-action="run-example" ${state.running?'disabled':''}>Run example</button><span class="small">Runs in your browser, not on a server.</span></div><div class="demo-output placeholder" id="example-console" aria-live="polite">Press Run example to see the result.</div>
   <div class="section-heading" style="margin-top:22px"><div><h2>Your turn</h2><p class="small" style="margin:3px 0 0">The goal is to change or write code, not select an answer.</p></div></div><div class="task-box"><div class="task-label">${activity.kind === "project" ? "YOUR MISSION" : "QUICK CHALLENGE"}</div><p>${esc(activity.task)}</p></div><p class="small">Run your code. If the output matches the goal, you earn XP and unlock the next step. If it does not, you can try again.</p>
   <div class="lesson-meta"><div class="button-row"><button class="button quiet" data-action="repeat-activity">${isDone(activity.id)?'↻ Review this lesson again':'↻ Restart this lesson'}</button><button class="button quiet" data-action="open-chapter" data-id="${chapter.id}">Back to chapter</button></div><div class="button-row">${prev?`<button class="button quiet" data-action="open-activity" data-id="${prev.id}">← Previous</button>`:''}${next?`<button class="button primary" data-action="open-activity" data-id="${next.id}">Next →</button>`:''}</div></div>
-  </article><aside class="panel editor-card"><div class="editor-head"><div><h2>Code editor</h2><div class="editor-help">Type, edit, or delete anything. Use Tab for 4 spaces. Ctrl/⌘ + Enter runs your code.</div></div><span class="tag">Python</span></div><label class="input-label" for="code-editor">Your code</label><textarea class="code-editor" id="code-editor" spellcheck="false" autocomplete="off" autocapitalize="off" aria-label="Write your Python code">${esc(starter)}</textarea>
-  <details class="input-details" ${activity.input_values ? 'open' : ''}><summary class="input-label">Input values for input() <span class="small">(one answer per line)</span></summary><textarea class="input-editor" id="input-values" spellcheck="false" aria-label="Values provided to input function">${esc(inputValues)}</textarea></details>
+  </article><aside class="panel editor-card"><div class="editor-head"><div><h2>Code editor</h2><div class="editor-help">Type and edit freely. input() prompts appear in the console; type your answer there and press Enter. Use Tab for 4 spaces; Ctrl/⌘ + Enter runs your code.</div></div><span class="tag">Python</span></div><label class="input-label" for="code-editor">Your code</label><textarea class="code-editor" id="code-editor" spellcheck="false" autocomplete="off" autocapitalize="off" aria-label="Write your Python code">${esc(starter)}</textarea>
   <div class="button-row" style="margin-top:12px"><button class="button primary" data-action="check-code" ${state.running?'disabled':''}>▶ Run &amp; check</button><button class="button" data-action="run-custom" ${state.running?'disabled':''}>Run only</button><button class="button quiet" data-action="reset-code">Reset code</button></div>
-  <div class="console-card"><div class="console-head"><span class="console-title">Python console</span><span class="tag" id="run-status">READY</span></div><div class="console-output" id="challenge-console" aria-live="polite">Your output will appear here.</div></div>
+  <div class="console-card"><div class="console-head"><span class="console-title">Python console</span><span class="tag" id="run-status">READY</span><button class="button quiet console-stop" data-action="stop-run" disabled>Stop</button></div><div class="console-output" id="challenge-console" aria-live="polite">Your output will appear here.</div></div>
   <div id="challenge-feedback"></div>
-  <div class="button-row" style="margin-top:10px"><button class="button quiet" data-action="toggle-hint">${state.hintOpen?'Hide hint':'Need a hint?'}</button><button class="button quiet" data-action="toggle-solution">${state.solutionOpen?'Hide solution':'Show solution'}</button></div><p class="small reward-note">Hints never lower your XP. Putting the full solution in the editor earns half credit; it also restores the lesson's sample inputs. Reset and solve it yourself later to earn the rest.</p>
+  <div class="button-row" style="margin-top:10px"><button class="button quiet" data-action="toggle-hint">${state.hintOpen?'Hide hint':'Need a hint?'}</button><button class="button quiet" data-action="toggle-solution">${state.solutionOpen?'Hide solution':'Show solution'}</button></div><p class="small reward-note">Hints never lower your XP. Putting the full solution in the editor earns half credit. Reset and solve it yourself later to earn the rest.</p>
   <div id="hint-holder">${state.hintOpen?`<div class="hint-panel"><strong>Hint:</strong> ${esc(activity.hint)}</div>`:''}</div>${state.solutionOpen?`<div class="hint-panel"><strong>One working solution:</strong><pre class="demo-code">${esc(activity.solution_code)}</pre><button class="button" data-action="use-solution">Put solution in editor</button></div>`:''}
   ${isDone(activity.id)?`<div class="feedback good">You have completed this activity. Use “Review this lesson again” to restart with the starter code. Repeating will not remove completion or award XP twice. If you first used the full solution, solve it independently to earn the remaining XP.</div>`:''}</aside></section>`;
 }
@@ -298,9 +296,8 @@ function bindCurrentView() {
   main.addEventListener('input', (event) => {
     if (event.target.id === 'course-search') { state.search = event.target.value; const pos=event.target.selectionStart; render(); const field=$('#course-search'); field?.focus(); field?.setSelectionRange(pos,pos); }
     if (event.target.id === 'reference-search') { state.referenceSearch=event.target.value; const pos=event.target.selectionStart; render(); const field=$('#reference-search'); field?.focus(); field?.setSelectionRange(pos,pos); }
-    if (event.target.id === 'code-editor') { const a=currentActivity(); if(a) saveDraft(a.id,event.target.value,$('#input-values')?.value || a.input_values || '',state.solutionUsed); }
-    if (event.target.id === 'input-values') { const a=currentActivity(); if(a) saveDraft(a.id,$('#code-editor')?.value || a.starter_code,event.target.value,state.solutionUsed); }
-    if (event.target.id === 'sandbox-code' || event.target.id === 'sandbox-input') saveDraft('sandbox',$('#sandbox-code')?.value || '',$('#sandbox-input')?.value || '');
+    if (event.target.id === 'code-editor') { const a=currentActivity(); if(a) saveDraft(a.id,event.target.value,'',state.solutionUsed); }
+    if (event.target.id === 'sandbox-code') saveDraft('sandbox',$('#sandbox-code')?.value || '','');
   });
   main.addEventListener('keydown', (event) => {
     if (event.target.matches('textarea.code-editor') && event.key === 'Tab') {
@@ -326,6 +323,8 @@ $('#app').addEventListener('click', (event) => {
 async function handleAction(action, button) {
   const id=button.dataset.id;
   clearNotice();
+  if (state.running && ['navigate','open-chapter','open-activity'].includes(action)) state.cancelExecution?.();
+  if (action==='stop-run') { state.cancelExecution?.(); return; }
   if (action==='navigate') { state.view=button.dataset.view; state.hintOpen=false; state.solutionOpen=false; render(); window.scrollTo({top:0,behavior:'auto'}); return; }
   if (action==='open-chapter') { state.chapterId=id; state.view='chapter'; state.hintOpen=false;state.solutionOpen=false;render();window.scrollTo({top:0,behavior:'auto'});return; }
   if (action==='open-activity') { state.activityId=id; const a=state.activities.find(x=>x.id===id); state.chapterId=a?.chapter_id||null;state.view='activity';state.hintOpen=false;state.solutionOpen=false;state.lastRun=null;state.solutionUsed=Boolean(getDraft(id)?.usedSolution);render();window.scrollTo({top:0,behavior:'auto'});return; }
@@ -333,13 +332,13 @@ async function handleAction(action, button) {
   if (action==='run-example') { await runActivityCode(true,false); return; }
   if (action==='check-code') { await runActivityCode(false,true); return; }
   if (action==='run-custom') { await runActivityCode(false,false); return; }
-  if (action==='reset-code') { const a=currentActivity(); if(!a)return; const code=$('#code-editor');const input=$('#input-values');if(code)code.value=a.starter_code;if(input)input.value=a.input_values||'';state.solutionUsed=false;saveDraft(a.id,a.starter_code,a.input_values||'',false);const f=$('#challenge-feedback');if(f)f.innerHTML='';const o=$('#challenge-console');if(o)o.textContent='Editor reset to the starter code. Solve it on your own to earn any remaining XP.';return; }
+  if (action==='reset-code') { const a=currentActivity(); if(!a)return; const code=$('#code-editor');if(code)code.value=a.starter_code;state.solutionUsed=false;saveDraft(a.id,a.starter_code,'',false);const f=$('#challenge-feedback');if(f)f.innerHTML='';const o=$('#challenge-console');if(o)o.textContent='Editor reset to the starter code. Solve it on your own to earn any remaining XP.';return; }
   if (action==='toggle-hint') { state.hintOpen=!state.hintOpen; const a=currentActivity(); const holder=$('#hint-holder'); if(holder)holder.innerHTML=state.hintOpen?`<div class="hint-panel"><strong>Hint:</strong> ${esc(a.hint)}</div>`:'';button.textContent=state.hintOpen?'Hide hint':'Need a hint?';return; }
   if (action==='toggle-solution') { state.solutionOpen=!state.solutionOpen; const a=currentActivity(); render(); return; }
-  if (action==='use-solution') { const a=currentActivity(); const field=$('#code-editor'); const input=$('#input-values'); if(a&&field){state.solutionUsed=true;field.value=a.solution_code;if(input)input.value=a.input_values||'';saveDraft(a.id,field.value,a.input_values||'',true);field.dispatchEvent(new Event('input',{bubbles:true}));if(input)input.dispatchEvent(new Event('input',{bubbles:true}));}return; }
+  if (action==='use-solution') { const a=currentActivity(); const field=$('#code-editor'); if(a&&field){state.solutionUsed=true;field.value=a.solution_code;saveDraft(a.id,field.value,'',true);field.dispatchEvent(new Event('input',{bubbles:true}));}return; }
   if (action==='sandbox-run') { await runSandbox(); return; }
   if (action==='sandbox-clear') { const out=$('#sandbox-output');if(out)out.textContent='';return; }
-  if (action==='sandbox-template') { const templates={hello:`print("Hello, world!")`,strings:`print(2 + 5)\nprint("2 + 5")`,loops:`for number in range(1, 6):\n    print(number)`,calculator:`first = float(input("First number: "))\nsecond = float(input("Second number: "))\nprint(f"Total: {first + second}")`};const code=templates[button.dataset.template];if(code!==undefined){$('#sandbox-code').value=code;$('#sandbox-input').value=button.dataset.template==='calculator'?'3\n4':'';saveDraft('sandbox',code,$('#sandbox-input').value);}return; }
+  if (action==='sandbox-template') { const templates={hello:`print("Hello, world!")`,strings:`print(2 + 5)\nprint("2 + 5")`,loops:`for number in range(1, 6):\n    print(number)`,calculator:`first = float(input("First number: "))\nsecond = float(input("Second number: "))\nprint(f"Total: {first + second}")`};const code=templates[button.dataset.template];if(code!==undefined){$('#sandbox-code').value=code;saveDraft('sandbox',code,'');}return; }
   if (action==='account-tab') { state.accountTab=button.dataset.tab;render();return; }
   if (action==='sign-out') { if(state.supabase){const {error}=await state.supabase.auth.signOut();if(error){showAccountMessage(error.message,'bad');return;} }state.user=null;state.profile=null;state.session=null;state.cloudCompleted=new Set();state.backendError='';state.view='account';render();updateHeaderStats();return; }
   if (action==='password-reset') { await sendPasswordReset();return; }
