@@ -57,7 +57,7 @@ for activity in activities:
 
 sql = (ROOT / "supabase" / "schema.sql").read_text(encoding="utf-8")
 seeded = re.findall(r"\(E'(c\d{2}-(?:l|p)\d{2})',", sql)
-assert len(seeded) == 68, f"Expected 68 challenge seed rows, got {len(seeded)}"
+assert len(seeded) == 70, f"Expected 70 challenge seed rows, got {len(seeded)}"
 assert set(seeded) == set(ids), f"Challenge seed mismatch: missing {set(ids)-set(seeded)}; extra {set(seeded)-set(ids)}"
 assert "notify pgrst, 'reload schema';" in sql.lower(), "Schema SQL must refresh PostgREST cache"
 
