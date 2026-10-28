@@ -38,6 +38,7 @@ assert 'id="input-values"' not in app_js and 'id="sandbox-input"' not in app_js,
 assert "field.className = 'console-stdin';" in app_js and "message.type === 'input-request'" in app_js, "The console must show an inline input prompt and wait for Enter"
 assert "type: 'stdin'" in app_js and "await _pp_request_input(prompt)" in worker_js, "The Python worker must pause for console input instead of preloading answers"
 assert "ast.PyCF_ALLOW_TOP_LEVEL_AWAIT" in worker_js, "Interactive input must work in ordinary top-level Python code"
+assert '_pp_input_async\": _pp_input_async' in worker_js and "eval(_pp_code_object, _pp_student_globals)" in worker_js, "Transformed input() calls must resolve in the student code execution scope"
 assert "needsCompleteLessonSchemaUpdate(error)" in app_js and "PGRST202" in app_js, "Missing RPC errors must show a specific Supabase schema-migration instruction"
 assert "blob/main/supabase/schema.sql" in app_js, "Cloud progress errors must link to the current schema SQL"
 
