@@ -33,6 +33,22 @@ def wait_for_exact_text(locator, text, timeout=90):
         time.sleep(0.25)
     raise AssertionError(f'Timed out waiting for {text!r}; last text was {last!r}')
 
+def wait_for_console_input(page, output_selector, status_selector, timeout=20):
+    deadline = time.monotonic() + timeout
+    last_status = ''
+    while time.monotonic() < deadline:
+        if page.locator(".console-stdin").count() and page.locator(".console-stdin").is_visible():
+            return
+        try:
+            last_status = page.locator(status_selector).inner_text(timeout=250).strip()
+            output = page.locator(output_selector).inner_text(timeout=250)
+        except Exception:
+            output = ''
+        if last_status in {"ERROR", "FINISHED"}:
+            raise AssertionError(f"Python ended before asking for input: status={last_status!r}; output={output!r}")
+        time.sleep(0.1)
+    raise AssertionError(f"Timed out waiting for console input: status={last_status!r}; output={page.locator(output_selector).inner_text()!r}")
+
 
 def main():
     handler = functools.partial(QuietHandler, directory=str(ROOT))
@@ -89,14 +105,14 @@ def main():
                 page.locator('button[data-action="use-solution"]').click()
                 assert page.locator("#input-values").count() == 0, "The lesson must not show a separate input-values box"
                 page.locator('button[data-action="check-code"]').click()
-                page.locator(".console-stdin").wait_for(state="visible")
+                wait_for_console_input(page, "#challenge-console", "#run-status")
                 page.locator(".console-stdin").fill("not a number")
                 page.locator(".console-stdin").press("Enter")
                 wait_for_exact_text(page.locator("#run-status"), "ERROR")
                 assert "ValueError" in page.locator("#challenge-console").inner_text(), "Invalid input should behave like Python float(input(...))"
                 assert page.locator("#top-xp").inner_text().strip() == "15 XP", "An input error must not award XP"
                 page.locator('button[data-action="check-code"]').click()
-                page.locator(".console-stdin").wait_for(state="visible")
+                wait_for_console_input(page, "#sandbox-output", "#sandbox-status")
                 page.locator(".console-stdin").fill("8")
                 page.locator(".console-stdin").press("Enter")
                 page.locator(".console-stdin").wait_for(state="visible")
