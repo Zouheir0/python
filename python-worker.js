@@ -111,7 +111,9 @@ async def _pp_input_async(*args, **kwargs):
         raise TypeError("input() takes no keyword arguments")
     if len(args) > 1:
         raise TypeError("input expected at most 1 argument, got " + str(len(args)))
-    prompt = str(args[0]) if args else ""
+    prompt_arg = args[0] if args else ""
+    # A missing prompt, or None supplied as the prompt, should not render "None".
+    prompt = "" if prompt_arg is None else str(prompt_arg)
     if prompt:
         _pp_write_console(prompt)
     value = await _pp_request_input(prompt)
