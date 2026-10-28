@@ -12,7 +12,7 @@ const state = {
   chapters: [], activities: [], view: 'learn', chapterId: null, activityId: null,
   user: null, session: null, profile: null, supabase: null, backendError: '',
   local: loadLocal(), cloudCompleted: new Set(), accountTab: 'signin', recoveryMode: false,
-  running: false, lastRun: null, hintOpen: false, solutionOpen: false,
+  running: false, lastRun: null, hintOpen: false, solutionOpen: false, solutionUsed: false,
   search: '', referenceSearch: '', leaderboardRows: [], leaderboardError: '',
   notice: '', noticeKind: 'info',
 };
@@ -20,13 +20,13 @@ const state = {
 function loadLocal() {
   try {
     const value = JSON.parse(localStorage.getItem(LOCAL_KEY) || '{"completed":[]}');
-    return { completed: Array.isArray(value.completed) ? value.completed.filter((id) => typeof id === 'string') : [] };
+    return { completed: Array.isArray(value.completed) ? value.completed.filter((id) => typeof id === 'string') : [], awards: value.awards && typeof value.awards === 'object' && !Array.isArray(value.awards) ? value.awards : {} };
   } catch { return { completed: [] }; }
 }
 function saveLocal() { try { localStorage.setItem(LOCAL_KEY, JSON.stringify(state.local)); } catch {} }
 function loadDrafts() { try { return JSON.parse(localStorage.getItem(DRAFT_KEY) || '{}'); } catch { return {}; } }
-function saveDraft(id, code, inputs) {
-  const drafts = loadDrafts(); drafts[id] = { code, inputs }; try { localStorage.setItem(DRAFT_KEY, JSON.stringify(drafts)); } catch {}
+function saveDraft(id, code, inputs, usedSolution = state.solutionUsed) {
+  const drafts = loadDrafts(); drafts[id] = { code, inputs, usedSolution: id === 'sandbox' ? false : Boolean(usedSolution) }; try { localStorage.setItem(DRAFT_KEY, JSON.stringify(drafts)); } catch {}
 }
 function getDraft(id) { return loadDrafts()[id] || null; }
 function allActivities() { return state.chapters.flatMap((chapter) => chapter.activities); }
@@ -35,8 +35,9 @@ function doneSet() { return state.user ? state.cloudCompleted : new Set(state.lo
 function isDone(id) { return doneSet().has(id); }
 function totalCount() { return state.activities.length; }
 function completeCount() { return state.activities.filter((a) => isDone(a.id)).length; }
-function pointsFor(ids) { const set = ids instanceof Set ? ids : new Set(ids); return state.activities.reduce((sum, a) => sum + (set.has(a.id) ? a.points : 0), 0); }
-function localXP() { return pointsFor(state.local.completed); }
+function pointsFor(ids, awards = null) { const set = ids instanceof Set ? ids : new Set(ids); return state.activities.reduce((sum, a) => sum + (set.has(a.id) ? Number(awards?.[a.id] ?? a.points) : 0), 0); }
+function localXP() { return pointsFor(state.local.completed, state.local.awards); }
+function rewardFor(activity, usedSolution) { return usedSolution ? Math.max(1, Math.ceil(activity.points / 2)) : activity.points; }
 function currentXP() { return state.user ? Number(state.profile?.xp || 0) : localXP(); }
 function currentLevel() { return Math.floor(currentXP() / 100) + 1; }
 function levelProgress() { return currentXP() % 100; }
@@ -172,7 +173,7 @@ function renderLearn() {
 function renderChapter() {
   const chapter = state.chapters.find((c) => c.id === state.chapterId) || state.chapters[0];
   const done = chapterActivityCount(chapter);
-  return `<div class="eyebrow">Chapter ${String(state.chapters.indexOf(chapter)+1).padStart(2,'0')}</div><h1 class="page-title">${esc(chapter.title)}</h1><p class="lead">${esc(chapter.desc)}</p><div class="chapter-actions"><button class="button quiet" data-action="navigate" data-view="learn">← All chapters</button><button class="button primary" data-action="open-activity" data-id="${(chapter.activities.find(a=>!isDone(a.id))||chapter.activities[0]).id}">Start next activity →</button></div><section class="panel" style="padding:14px 16px;margin-bottom:14px"><div class="progress-labels"><span>${done} of ${chapter.activities.length} complete</span><span>${chapter.activities.reduce((n,a)=>n+a.points,0)} possible XP</span></div><div class="progress-track"><div class="progress-fill" style="width:${Math.round(done/chapter.activities.length*100)}%"></div></div><p class="small">Each activity has an editable code editor. After a few lessons, you will make a small project that combines the ideas.</p></section><div class="activity-list">${chapter.activities.map((a,i)=>`<button class="activity-row" data-action="open-activity" data-id="${a.id}"><span class="activity-index ${isDone(a.id)?'done':''}">${isDone(a.id)?'✓':String(i+1).padStart(2,'0')}</span><span class="activity-copy"><span class="activity-title">${esc(a.title)}</span><span class="activity-sub">${a.kind==='project'?'Put your skills together in a project.':'Learn one new idea and practise it in code.'}</span></span><span class="activity-right"><span class="tag ${a.kind==='project'?'gold':''}">${a.kind==='project'?'PROJECT':'LESSON'}</span><span>+${a.points} XP</span><span>→</span></span></button>`).join('')}</div>`;
+  return `<div class="eyebrow">Chapter ${String(state.chapters.indexOf(chapter)+1).padStart(2,'0')}</div><h1 class="page-title">${esc(chapter.title)}</h1><p class="lead">${esc(chapter.desc)}</p><div class="chapter-actions"><button class="button quiet" data-action="navigate" data-view="learn">← All chapters</button><button class="button primary" data-action="open-activity" data-id="${(chapter.activities.find(a=>!isDone(a.id))||chapter.activities[0]).id}">Start next activity →</button></div><section class="panel" style="padding:14px 16px;margin-bottom:14px"><div class="progress-labels"><span>${done} of ${chapter.activities.length} complete</span><span>${chapter.activities.reduce((n,a)=>n+a.points,0)} possible XP</span></div><div class="progress-track"><div class="progress-fill" style="width:${Math.round(done/chapter.activities.length*100)}%"></div></div><p class="small">Each activity has an editable code editor. After a few lessons, you will make a small project that combines the ideas.</p></section><div class="activity-list">${chapter.activities.map((a,i)=>`<button class="activity-row" data-action="open-activity" data-id="${a.id}"><span class="activity-index ${isDone(a.id)?'done':''}">${isDone(a.id)?'✓':String(i+1).padStart(2,'0')}</span><span class="activity-copy"><span class="activity-title">${esc(a.title)}</span><span class="activity-sub">${a.kind==='project'?'Put your skills together in a project.':'Learn one new idea and practise it in code.'}</span></span><span class="activity-right"><span class="tag ${a.kind==='project'?'gold':''}">${a.kind==='project'?'PROJECT':'LESSON'}</span><span>up to ${a.points} XP</span><span>→</span></span></button>`).join('')}</div>`;
 }
 function renderActivity() {
   const activity = currentActivity();
@@ -183,18 +184,21 @@ function renderActivity() {
   const draft = getDraft(activity.id);
   const starter = draft?.code ?? activity.starter_code;
   const inputValues = draft?.inputs ?? activity.input_values ?? '';
-  return `<div class="eyebrow">${esc(chapter.title)} / ${activity.kind==='project'?'Project':'Lesson'} ${idx+1}</div><section class="activity-layout"><article class="panel lesson-text"><div class="lesson-heading"><div><span class="tag ${activity.kind==='project'?'gold':'green'}">${activity.kind==='project'?'MINI PROJECT':'ONE SMALL IDEA'}</span><h1>${esc(activity.title)}</h1><p class="small">${esc(chapter.title)} · ${activity.points} XP on completion</p></div><span class="tag ${isDone(activity.id)?'green':''}">${isDone(activity.id)?'Complete':'In progress'}</span></div><p class="lesson-concept">${esc(activity.concept)}</p><div class="analogy"><strong>Picture it:</strong> ${esc(activity.analogy)}</div>
+  state.solutionUsed = Boolean(draft?.usedSolution);
+  return `<div class="eyebrow">${esc(chapter.title)} / ${activity.kind==='project'?'Project':'Lesson'} ${idx+1}</div><section class="activity-layout"><article class="panel lesson-text"><div class="lesson-heading"><div><span class="tag ${activity.kind==='project'?'gold':'green'}">${activity.kind==='project'?'MINI PROJECT':'ONE SMALL IDEA'}</span><h1>${esc(activity.title)}</h1><p class="small">${esc(chapter.title)} · up to ${activity.points} XP</p></div><span class="tag ${isDone(activity.id)?'green':''}">${isDone(activity.id)?'Complete':'In progress'}</span></div><p class="lesson-concept">${esc(activity.concept)}</p><div class="analogy"><strong>Picture it:</strong> ${esc(activity.analogy)}</div>
+  <section class="code-walkthrough"><div class="eyebrow">Decode the code</div><h2>Read it like a detective</h2><ol>${(activity.walkthrough || []).map((step) => `<li>${esc(step)}</li>`).join("")}</ol><p class="small">Try explaining these steps in your own words before moving on.</p></section>
+  <details class="prediction-box"><summary>Predict first — then reveal the example output</summary><p class="small">Look at the code and guess what Python will display. Then compare your prediction.</p><pre class="demo-code">${esc(activity.example_output || "(No output)")}</pre></details>
   <div class="section-heading" style="margin-top:21px"><div><h2>See an example</h2><p class="small" style="margin:3px 0 0">Run this small example and compare it with the result.</p></div></div><pre class="demo-code">${esc(activity.example_code)}</pre><div class="button-row"><button class="button" data-action="run-example" ${state.running?'disabled':''}>Run example</button><span class="small">Runs in your browser, not on a server.</span></div><div class="demo-output placeholder" id="example-console" aria-live="polite">Press Run example to see the result.</div>
-  <div class="section-heading" style="margin-top:22px"><div><h2>Your turn</h2><p class="small" style="margin:3px 0 0">The goal is to change or write code, not select an answer.</p></div></div><div class="task-box"><div class="task-label">Coding challenge</div><p>${esc(activity.task)}</p></div><p class="small">Run your code. If the output matches the goal, you earn XP and unlock the next step. If it does not, you can try again.</p>
+  <div class="section-heading" style="margin-top:22px"><div><h2>Your turn</h2><p class="small" style="margin:3px 0 0">The goal is to change or write code, not select an answer.</p></div></div><div class="task-box"><div class="task-label">${activity.kind === "project" ? "YOUR MISSION" : "QUICK CHALLENGE"}</div><p>${esc(activity.task)}</p></div><p class="small">Run your code. If the output matches the goal, you earn XP and unlock the next step. If it does not, you can try again.</p>
   <div class="lesson-meta"><button class="button quiet" data-action="open-chapter" data-id="${chapter.id}">Back to chapter</button><div class="button-row">${prev?`<button class="button quiet" data-action="open-activity" data-id="${prev.id}">← Previous</button>`:''}${next?`<button class="button primary" data-action="open-activity" data-id="${next.id}">Next →</button>`:''}</div></div>
   </article><aside class="panel editor-card"><div class="editor-head"><div><h2>Code editor</h2><div class="editor-help">Type, edit, or delete anything. Use Tab for 4 spaces. Ctrl/⌘ + Enter runs your code.</div></div><span class="tag">Python</span></div><label class="input-label" for="code-editor">Your code</label><textarea class="code-editor" id="code-editor" spellcheck="false" autocomplete="off" autocapitalize="off" aria-label="Write your Python code">${esc(starter)}</textarea>
   <details class="input-details" ${activity.input_values ? 'open' : ''}><summary class="input-label">Input values for input() <span class="small">(one answer per line)</span></summary><textarea class="input-editor" id="input-values" spellcheck="false" aria-label="Values provided to input function">${esc(inputValues)}</textarea></details>
   <div class="button-row" style="margin-top:12px"><button class="button primary" data-action="check-code" ${state.running?'disabled':''}>▶ Run &amp; check</button><button class="button" data-action="run-custom" ${state.running?'disabled':''}>Run only</button><button class="button quiet" data-action="reset-code">Reset</button></div>
   <div class="console-card"><div class="console-head"><span class="console-title">Python console</span><span class="tag" id="run-status">READY</span></div><div class="console-output" id="challenge-console" aria-live="polite">Your output will appear here.</div></div>
   <div id="challenge-feedback"></div>
-  <div class="button-row" style="margin-top:10px"><button class="button quiet" data-action="toggle-hint">${state.hintOpen?'Hide hint':'Need a hint?'}</button><button class="button quiet" data-action="toggle-solution">${state.solutionOpen?'Hide solution':'Show solution'}</button></div>
+  <div class="button-row" style="margin-top:10px"><button class="button quiet" data-action="toggle-hint">${state.hintOpen?'Hide hint':'Need a hint?'}</button><button class="button quiet" data-action="toggle-solution">${state.solutionOpen?'Hide solution':'Show solution'}</button></div><p class="small reward-note">Hints never lower your XP. Putting the full solution in the editor earns half credit; reset and solve it yourself later to earn the rest.</p>
   <div id="hint-holder">${state.hintOpen?`<div class="hint-panel"><strong>Hint:</strong> ${esc(activity.hint)}</div>`:''}</div>${state.solutionOpen?`<div class="hint-panel"><strong>One working solution:</strong><pre class="demo-code">${esc(activity.solution_code)}</pre><button class="button" data-action="use-solution">Put solution in editor</button></div>`:''}
-  ${isDone(activity.id)?`<div class="feedback good">You completed this activity. ${activity.points} XP ${state.user?'is recorded in your account.':'is counted on this device.'}</div>`:''}</aside></section>`;
+  ${isDone(activity.id)?`<div class="feedback good">You have completed this activity. Revisit it any time to practise or earn the remaining XP if you first used the full solution.</div>`:''}</aside></section>`;
 }
 function renderSandbox() {
   const draft = getDraft('sandbox') || {code:`name = input("What is your name? ")\nprint(f"Hello, {name}!")`,inputs:'Python Path'};
@@ -250,8 +254,8 @@ function bindCurrentView() {
   main.addEventListener('input', (event) => {
     if (event.target.id === 'course-search') { state.search = event.target.value; const pos=event.target.selectionStart; render(); const field=$('#course-search'); field?.focus(); field?.setSelectionRange(pos,pos); }
     if (event.target.id === 'reference-search') { state.referenceSearch=event.target.value; const pos=event.target.selectionStart; render(); const field=$('#reference-search'); field?.focus(); field?.setSelectionRange(pos,pos); }
-    if (event.target.id === 'code-editor') { const a=currentActivity(); if(a) saveDraft(a.id,event.target.value,$('#input-values')?.value || a.input_values || ''); }
-    if (event.target.id === 'input-values') { const a=currentActivity(); if(a) saveDraft(a.id,$('#code-editor')?.value || a.starter_code,event.target.value); }
+    if (event.target.id === 'code-editor') { const a=currentActivity(); if(a) saveDraft(a.id,event.target.value,$('#input-values')?.value || a.input_values || '',state.solutionUsed); }
+    if (event.target.id === 'input-values') { const a=currentActivity(); if(a) saveDraft(a.id,$('#code-editor')?.value || a.starter_code,event.target.value,state.solutionUsed); }
     if (event.target.id === 'sandbox-code' || event.target.id === 'sandbox-input') saveDraft('sandbox',$('#sandbox-code')?.value || '',$('#sandbox-input')?.value || '');
   });
   main.addEventListener('keydown', (event) => {
@@ -280,14 +284,14 @@ async function handleAction(action, button) {
   clearNotice();
   if (action==='navigate') { state.view=button.dataset.view; state.hintOpen=false; state.solutionOpen=false; render(); window.scrollTo({top:0,behavior:'auto'}); return; }
   if (action==='open-chapter') { state.chapterId=id; state.view='chapter'; state.hintOpen=false;state.solutionOpen=false;render();window.scrollTo({top:0,behavior:'auto'});return; }
-  if (action==='open-activity') { state.activityId=id; const a=state.activities.find(x=>x.id===id); state.chapterId=a?.chapter_id||null;state.view='activity';state.hintOpen=false;state.solutionOpen=false;state.lastRun=null;render();window.scrollTo({top:0,behavior:'auto'});return; }
+  if (action==='open-activity') { state.activityId=id; const a=state.activities.find(x=>x.id===id); state.chapterId=a?.chapter_id||null;state.view='activity';state.hintOpen=false;state.solutionOpen=false;state.lastRun=null;state.solutionUsed=Boolean(getDraft(id)?.usedSolution);render();window.scrollTo({top:0,behavior:'auto'});return; }
   if (action==='run-example') { await runActivityCode(true,false); return; }
   if (action==='check-code') { await runActivityCode(false,true); return; }
   if (action==='run-custom') { await runActivityCode(false,false); return; }
-  if (action==='reset-code') { const a=currentActivity(); if(!a)return; const code=$('#code-editor');const input=$('#input-values');if(code)code.value=a.starter_code;if(input)input.value=a.input_values||'';saveDraft(a.id,a.starter_code,a.input_values||'');const f=$('#challenge-feedback');if(f)f.innerHTML='';const o=$('#challenge-console');if(o)o.textContent='Editor reset to the starter code.';return; }
+  if (action==='reset-code') { const a=currentActivity(); if(!a)return; const code=$('#code-editor');const input=$('#input-values');if(code)code.value=a.starter_code;if(input)input.value=a.input_values||'';state.solutionUsed=false;saveDraft(a.id,a.starter_code,a.input_values||'',false);const f=$('#challenge-feedback');if(f)f.innerHTML='';const o=$('#challenge-console');if(o)o.textContent='Editor reset to the starter code. Solve it on your own to earn any remaining XP.';return; }
   if (action==='toggle-hint') { state.hintOpen=!state.hintOpen; const a=currentActivity(); const holder=$('#hint-holder'); if(holder)holder.innerHTML=state.hintOpen?`<div class="hint-panel"><strong>Hint:</strong> ${esc(a.hint)}</div>`:'';button.textContent=state.hintOpen?'Hide hint':'Need a hint?';return; }
   if (action==='toggle-solution') { state.solutionOpen=!state.solutionOpen; const a=currentActivity(); render(); return; }
-  if (action==='use-solution') { const a=currentActivity(); const field=$('#code-editor');if(a&&field){field.value=a.solution_code;field.dispatchEvent(new Event('input',{bubbles:true}));}return; }
+  if (action==='use-solution') { const a=currentActivity(); const field=$('#code-editor');if(a&&field){state.solutionUsed=true;field.value=a.solution_code;saveDraft(a.id,field.value,$('#input-values')?.value || a.input_values || '',true);field.dispatchEvent(new Event('input',{bubbles:true}));}return; }
   if (action==='sandbox-run') { await runSandbox(); return; }
   if (action==='sandbox-clear') { const out=$('#sandbox-output');if(out)out.textContent='';return; }
   if (action==='sandbox-template') { const templates={hello:`print("Hello, world!")`,strings:`print(2 + 5)\nprint("2 + 5")`,loops:`for number in range(1, 6):\n    print(number)`,calculator:`first = float(input("First number: "))\nsecond = float(input("Second number: "))\nprint(f"Total: {first + second}")`};const code=templates[button.dataset.template];if(code!==undefined){$('#sandbox-code').value=code;$('#sandbox-input').value=button.dataset.template==='calculator'?'3\n4':'';saveDraft('sandbox',code,$('#sandbox-input').value);}return; }
@@ -349,24 +353,54 @@ async function executePython(code, inputText='') {
   });
 }
 async function completeActivity(activity, output, feedback) {
-  const already=isDone(activity.id);
+  const already = isDone(activity.id);
+  const requestedPoints = rewardFor(activity, state.solutionUsed);
   if (state.user && state.supabase) {
     try {
-      const {data,error}=await state.supabase.rpc('complete_lesson',{p_lesson_id:activity.id,p_output:output});
-      if(error) throw error;
+      const { data, error } = await state.supabase.rpc('complete_lesson', { p_lesson_id: activity.id, p_output: output, p_used_solution: state.solutionUsed });
+      if (error) throw error;
       await refreshCloudProgress(false);
-      if(feedback)feedback.innerHTML=`<div class="feedback good"><strong>Challenge passed!</strong><br>${data?.awarded?`+${activity.points} XP added to your account.`:'This activity was already completed, so XP was not added a second time.'} ${esc('Nice work. You are building real coding skills.')}</div>`;
-      if(data?.awarded) showLevelFeedback(Number(data.total_xp||state.profile?.xp||0),Number(data.xp_awarded||activity.points),feedback);
-    } catch(error) {
-      if(feedback)feedback.innerHTML=`<div class="feedback bad"><strong>Your code is correct, but cloud progress did not save.</strong><br>${esc(error.message||'Database request failed')}. Keep this page open, check the backend setup, and try again. No online XP was claimed.</div>`;
+      const granted = Number(data?.xp_awarded || 0);
+      let message = '';
+      if (data?.awarded && data?.upgraded) message = 'Great comeback! +' + granted + ' XP bonus. You now have the full ' + activity.points + ' XP for this activity.';
+      else if (data?.awarded && data?.solution_used) message = 'Challenge passed! +' + granted + ' XP earned (' + granted + ' of ' + activity.points + '). Using the solution is okay—reset and solve it independently later to earn the remaining ' + (activity.points - granted) + ' XP.';
+      else if (data?.awarded) message = 'Challenge passed! +' + granted + ' XP earned. You solved it independently—great work!';
+      else if (data?.solution_used) message = 'You already earned some XP with the solution. Reset and complete this challenge without inserting the full solution to earn the rest.';
+      else message = 'This activity is already complete. Your full XP reward is safe.';
+      if (feedback) feedback.innerHTML = '<div class="feedback good"><strong>' + (data?.upgraded ? 'Full credit unlocked!' : 'Nice work!') + '</strong><br>' + esc(message) + '</div>';
+      if (data?.awarded) showLevelFeedback(Number(data.total_xp ?? state.profile?.xp ?? 0), granted, feedback);
+    } catch (error) {
+      if (feedback) feedback.innerHTML = '<div class="feedback bad"><strong>Your code is correct, but cloud progress did not save.</strong><br>' + esc(error.message || 'Database request failed') + '. Keep this page open, check the backend setup, and try again. No online XP was claimed.</div>';
     }
   } else {
-    if(!state.local.completed.includes(activity.id)) { state.local.completed.push(activity.id); saveLocal(); }
-    if(feedback)feedback.innerHTML=`<div class="feedback good"><strong>Challenge passed!</strong><br>${already?'You already completed this activity.':`+${activity.points} XP earned on this device.`} ${state.local.completed.length>0?'Your local progress is saved in this browser.':''}</div>`;
-    if(!already) showLevelFeedback(localXP(),activity.points,feedback);
+    state.local.awards = state.local.awards || {};
+    let granted = 0;
+    let upgraded = false;
+    if (!already) {
+      if (!state.local.completed.includes(activity.id)) state.local.completed.push(activity.id);
+      granted = requestedPoints;
+      state.local.awards[activity.id] = requestedPoints;
+    } else {
+      const currentAward = Number(state.local.awards[activity.id] ?? activity.points);
+      if (!state.solutionUsed && currentAward < activity.points) {
+        granted = activity.points - currentAward;
+        state.local.awards[activity.id] = activity.points;
+        upgraded = true;
+      }
+    }
+    saveLocal();
+    const total = localXP();
+    let message = '';
+    if (upgraded) message = 'Great comeback! +' + granted + ' XP bonus. You now have the full ' + activity.points + ' XP for this activity.';
+    else if (granted > 0 && state.solutionUsed) message = 'Challenge passed! +' + granted + ' XP earned (' + granted + ' of ' + activity.points + '). Using the solution is okay—reset and solve it independently later to earn the remaining ' + (activity.points - granted) + ' XP.';
+    else if (granted > 0) message = 'Challenge passed! +' + granted + ' XP earned. You solved it independently—great work!';
+    else if (state.solutionUsed && Number(state.local.awards[activity.id] ?? activity.points) < activity.points) message = 'You already earned some XP with the solution. Reset and solve this challenge without inserting the full solution to earn the rest.';
+    else message = 'This activity is already complete. Your full XP reward is safe.';
+    if (feedback) feedback.innerHTML = '<div class="feedback good"><strong>' + (upgraded ? 'Full credit unlocked!' : 'Nice work!') + '</strong><br>' + esc(message) + '</div>';
+    if (granted > 0) showLevelFeedback(total, granted, feedback);
   }
   updateHeaderStats();
-  const badge=$('.lesson-heading .tag:last-child'); if(badge){badge.textContent='Complete';badge.classList.add('green');}
+  const badge = $('.lesson-heading .tag:last-child'); if (badge) { badge.textContent = 'Complete'; badge.classList.add('green'); }
 }
 function showLevelFeedback(xp,awardedPoints,feedback) {
   const oldLevel=Math.floor(Math.max(0,xp-awardedPoints)/100)+1; const newLevel=Math.floor(xp/100)+1;
