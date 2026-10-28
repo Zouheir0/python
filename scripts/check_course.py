@@ -9,9 +9,12 @@ course = json.loads((ROOT / "curriculum.json").read_text(encoding="utf-8"))
 activities = [a for chapter in course["chapters"] for a in chapter["activities"]]
 ids = [a["id"] for a in activities]
 assert len(course["chapters"]) == 16, f"Expected 16 chapters, got {len(course['chapters'])}"
-assert len(activities) == 68, f"Expected 68 coding activities, got {len(activities)}"
+assert len(activities) == 70, f"Expected 70 coding activities, got {len(activities)}"
 assert len(ids) == len(set(ids)), "Duplicate activity IDs found"
-assert sum(a["kind"] == "project" for a in activities) == 16, "Expected one project per chapter"
+assert sum(a["kind"] == "project" for a in activities) == 17, "Expected 17 projects across the 16 chapters"
+assert all(any(a["kind"] == "project" for a in chapter["activities"]) for chapter in course["chapters"]), "Every chapter needs at least one project"
+assert [a["id"] for a in course["chapters"][0]["activities"][:2]] == ["c01-l01", "c01-l04"], "Beginner path must teach print() first, then len()"
+assert any(a["id"] == "c06-p17" and a["kind"] == "project" for a in activities), "A standalone calculator capstone is required"
 assert all(a.get("starter_code") and a.get("solution_code") for a in activities), "An activity lacks starter/solution code"
 
 assert all(isinstance(a.get('walkthrough'), list) and len(a['walkthrough']) >= 2 for a in activities), 'Every activity needs a code walkthrough of at least two steps'
@@ -30,6 +33,7 @@ assert "if (nextUserId) clearGuestProgress();" in app_js, "A sign-in identity ch
 assert "function draftStorageKey()" in app_js and "user-${state.user.id}" in app_js and "-guest" in app_js, "Editor drafts must be isolated between account IDs and guest mode"
 assert "if (action==='repeat-activity')" in app_js and "Review this lesson again" in app_js, "Completed activities must have an explicit review/repeat action"
 assert "Repeating will not remove completion or award XP twice." in app_js, "Repeat behavior must explain that XP is not awarded twice"
+assert "if(input)input.value=a.input_values||'';" in app_js, "Use solution must restore a lesson's sample input values"
 
 failed = []
 for activity in activities:
@@ -64,7 +68,9 @@ assert "SUPABASE_SERVICE_ROLE_KEY =" not in config, "Never put service-role cred
 if failed:
     for item in failed: print("FAIL", item[0], item[1], "error=", item[2], "actual=", repr(item[3]), "expected=", repr(item[4]))
     raise SystemExit(f"{len(failed)} solution(s) failed")
-print(f"PASS: {len(course['chapters'])} chapters, {len(activities)} activities, 16 projects")
+print(f"PASS: {len(course['chapters'])} chapters, {len(activities)} activities, 17 projects")
 print(f"PASS: all {len(activities)} solution programs produce the expected output")
 print("PASS: 68 challenge seed IDs match the course and the schema reloads PostgREST")
 print("PASS: browser config uses only a publishable/anon key")
+print("PASS: print() is followed by len(), then the course builds toward an independent calculator project")
+print("PASS: using a solution restores known sample input values")
