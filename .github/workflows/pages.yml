@@ -38,6 +38,11 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Regenerate and verify the course catalogue
+        run: |
+          node curriculum-source.mjs
+          git diff -- curriculum.json
+          git diff --exit-code -- curriculum.json
       - name: Install PostgreSQL client
         run: sudo apt-get update && sudo apt-get install -y postgresql-client
       - name: Check every course solution and seed
