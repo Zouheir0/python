@@ -8,3 +8,6 @@
 
 /* Native-feeling stdin: the answer field sits inline at the end of console output. */
 .console-output{max-height:320px;overflow:auto;scrollbar-gutter:stable}.console-stdin{display:inline-block;min-width:6ch;max-width:min(48ch,100%);width:6ch;background:transparent;border:0;border-bottom:1px solid #55dca2;border-radius:0;color:inherit;padding:0 1px;font:inherit;line-height:inherit;vertical-align:baseline}.console-stdin:focus{border-bottom-color:var(--green)}.console-stop{padding:4px 8px;font-size:10px;flex:none}
+
+/* Keep the stdin field separate from preceding output so it never covers prompt text. */
+.console-input-row{display:flex;align-items:center;gap:8px;width:100%;min-width:0;margin:3px 0 1px}.console-input-marker{flex:none;color:var(--green);font-weight:800}.console-stdin{display:block;flex:1 1 auto;width:100%;min-width:0;max-width:100%;box-sizing:border-box;background:#0b1815;border:1px solid #2d6b53;border-radius:3px;color:var(--text);padding:5px 8px;font:inherit;line-height:1.5;vertical-align:baseline}.console-stdin:focus{border-color:var(--green);outline:1px solid var(--green)}
