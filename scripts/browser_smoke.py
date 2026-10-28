@@ -122,6 +122,15 @@ def main():
                 assert page.locator("#top-xp").inner_text().strip() == "35 XP", "Typing 8 and 2 into the console must pass the calculator and award half credit"
                 page.locator('button.nav-button[data-view="sandbox"]').click()
                 assert page.locator("#sandbox-input").count() == 0, "The sandbox must not show a separate input-values box"
+                page.locator("#sandbox-code").fill('answer = input()\nprint("Hello", answer)')
+                page.locator('button[data-action="sandbox-run"]').click()
+                wait_for_console_input(page, "#sandbox-output", "#sandbox-status")
+                assert "None" not in page.locator("#sandbox-output").inner_text(), "Calling input() without a prompt must not print a stray None"
+                assert page.locator(".console-input-row").evaluate("(row) => getComputedStyle(row).display") == "flex", "Input should occupy its own row beneath output"
+                page.locator(".console-stdin").fill("Ada")
+                page.locator(".console-stdin").press("Enter")
+                wait_for_exact_text(page.locator("#sandbox-status"), "FINISHED")
+                assert page.locator("#sandbox-output").inner_text().strip() == "Ada\nHello Ada", "A promptless input() should accept text without overlapping the console"
                 page.locator("#sandbox-code").fill('name = input("What is your name? ")\nprint(f"Hello, {name}!")')
                 page.locator('button[data-action="sandbox-run"]').click()
                 wait_for_console_input(page, "#sandbox-output", "#sandbox-status")
