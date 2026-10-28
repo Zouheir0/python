@@ -112,10 +112,10 @@ def main():
                 assert "ValueError" in page.locator("#challenge-console").inner_text(), "Invalid input should behave like Python float(input(...))"
                 assert page.locator("#top-xp").inner_text().strip() == "15 XP", "An input error must not award XP"
                 page.locator('button[data-action="check-code"]').click()
-                wait_for_console_input(page, "#sandbox-output", "#sandbox-status")
+                wait_for_console_input(page, "#challenge-console", "#run-status")
                 page.locator(".console-stdin").fill("8")
                 page.locator(".console-stdin").press("Enter")
-                page.locator(".console-stdin").wait_for(state="visible")
+                wait_for_console_input(page, "#challenge-console", "#run-status")
                 page.locator(".console-stdin").fill("2")
                 page.locator(".console-stdin").press("Enter")
                 wait_for_text(page.locator("#challenge-feedback"), "20 of 40")
@@ -131,7 +131,7 @@ def main():
                 assert page.locator("#sandbox-output").inner_text().strip() == "What is your name? Ada\nHello, Ada!", "input() should show the prompt and typed answer in the terminal"
                 page.locator("#sandbox-code").fill("def ask():\n    return input('Your name: ')\nanswer = ask()\nprint(answer.upper())")
                 page.locator('button[data-action="sandbox-run"]').click()
-                page.locator(".console-stdin").wait_for(state="visible")
+                wait_for_console_input(page, "#sandbox-output", "#sandbox-status")
                 page.locator(".console-stdin").fill("Mira")
                 page.locator(".console-stdin").press("Enter")
                 wait_for_exact_text(page.locator("#sandbox-status"), "FINISHED")
