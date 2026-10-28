@@ -56,7 +56,7 @@ def main():
                 page.route("**/config.js", lambda route: route.fulfill(
                     status=200, content_type="text/javascript",
                     body="export const SUPABASE_URL = ''; export const SUPABASE_PUBLISHABLE_KEY = '';"))
-                worker_response = page.request.get(url.rsplit("/", 1)[0] + "/python-worker.js?v=20261028-3")
+                worker_response = page.request.get(url.rsplit("/", 1)[0] + "/python-worker.js?v=20261028-4-interactive-stdin")
                 assert worker_response.status == 200, f"Python worker asset was not served: HTTP {worker_response.status}"
                 response = page.goto(url, wait_until="domcontentloaded")
                 assert response and response.status == 200, "Website did not return HTTP 200"
@@ -85,14 +85,41 @@ def main():
                 page.locator('button.nav-button[data-view="learn"]').click()
                 page.locator('button[data-action="open-chapter"][data-id="c06"]').click()
                 page.locator('button[data-action="open-activity"][data-id="c06-p17"]').click()
-                page.locator("#input-values").fill("1\nnot a number")
                 page.locator('button[data-action="toggle-solution"]').click()
                 page.locator('button[data-action="use-solution"]').click()
-                assert page.locator("#input-values").input_value() == "8\n2", "Using a solution must restore default sample inputs"
+                assert page.locator("#input-values").count() == 0, "The lesson must not show a separate input-values box"
                 page.locator('button[data-action="check-code"]').click()
+                page.locator(".console-stdin").wait_for(state="visible")
+                page.locator(".console-stdin").fill("not a number")
+                page.locator(".console-stdin").press("Enter")
+                wait_for_exact_text(page.locator("#run-status"), "ERROR")
+                assert "ValueError" in page.locator("#challenge-console").inner_text(), "Invalid input should behave like Python float(input(...))"
+                assert page.locator("#top-xp").inner_text().strip() == "15 XP", "An input error must not award XP"
+                page.locator('button[data-action="check-code"]').click()
+                page.locator(".console-stdin").wait_for(state="visible")
+                page.locator(".console-stdin").fill("8")
+                page.locator(".console-stdin").press("Enter")
+                page.locator(".console-stdin").wait_for(state="visible")
+                page.locator(".console-stdin").fill("2")
+                page.locator(".console-stdin").press("Enter")
                 wait_for_text(page.locator("#challenge-feedback"), "20 of 40")
-                assert page.locator("#top-xp").inner_text().strip() == "35 XP", "Calculator solution must pass with its sample inputs and award half credit"
+                assert page.locator("#top-xp").inner_text().strip() == "35 XP", "Typing 8 and 2 into the console must pass the calculator and award half credit"
                 page.locator('button.nav-button[data-view="sandbox"]').click()
+                assert page.locator("#sandbox-input").count() == 0, "The sandbox must not show a separate input-values box"
+                page.locator("#sandbox-code").fill('name = input("What is your name? ")\nprint(f"Hello, {name}!")')
+                page.locator('button[data-action="sandbox-run"]').click()
+                wait_for_text(page.locator("#sandbox-output"), "What is your name?")
+                page.locator(".console-stdin").fill("Ada")
+                page.locator(".console-stdin").press("Enter")
+                wait_for_exact_text(page.locator("#sandbox-status"), "FINISHED")
+                assert page.locator("#sandbox-output").inner_text().strip() == "What is your name? Ada\nHello, Ada!", "input() should show the prompt and typed answer in the terminal"
+                page.locator("#sandbox-code").fill("def ask():\n    return input('Your name: ')\nanswer = ask()\nprint(answer.upper())")
+                page.locator('button[data-action="sandbox-run"]').click()
+                page.locator(".console-stdin").wait_for(state="visible")
+                page.locator(".console-stdin").fill("Mira")
+                page.locator(".console-stdin").press("Enter")
+                wait_for_exact_text(page.locator("#sandbox-status"), "FINISHED")
+                assert page.locator("#sandbox-output").inner_text().strip() == "Your name: Mira\nMIRA", "input() inside a function should wait for console input"
                 page.locator("#sandbox-code").fill("print(2 + 5)")
                 page.locator('button[data-action="sandbox-run"]').click()
                 wait_for_exact_text(page.locator("#sandbox-status"), "FINISHED")
@@ -118,7 +145,7 @@ def main():
                 page.locator('button.nav-button[data-view="leaderboard"]').click()
                 assert "Leaderboard" in page.locator("#app").inner_text()
                 assert not page_errors, f"Uncaught browser errors: {page_errors}"
-                print("PASS: print() then len() course order; using a solution restores sample inputs; calculator capstone solution passes; review does not double-award XP; sandbox and key views work")
+                print("PASS: print() then len(); interactive input() in lesson and sandbox consoles; function-based input; calculator grading; repeat XP; sandbox and key views")
             finally:
                 browser.close()
                 server.shutdown()
