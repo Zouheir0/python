@@ -4,7 +4,7 @@
     {
       "id": "c01",
       "title": "Make Python talk",
-      "desc": "Wake up Python by printing messages, spotting quotes, and making simple calculations.",
+      "desc": "Start with print(), count characters with len(), then learn the basics that power real programs.",
       "activities": [
         {
           "id": "c01-l01",
@@ -26,6 +26,28 @@
           "walkthrough": [
             "print(...) is the instruction that displays something. The parentheses hold what you want Python to show.",
             "The quote marks wrap the exact text; the quote marks themselves do not appear in the output."
+          ]
+        },
+        {
+          "id": "c01-l04",
+          "title": "Count characters with len()",
+          "kind": "lesson",
+          "concept": "len(...) counts the characters in text and gives back a number. Spaces count as characters too.",
+          "analogy": "len() is like a measuring tape for text: it tells you how many characters fit inside the quotes.",
+          "example_code": "print(len(\"cat\"))\nprint(len(\"hello world\"))",
+          "example_output": "3\n11",
+          "task": "Use len() to print how many characters are in the word Python.",
+          "starter_code": "print(len(\"hi\"))",
+          "expected_output": "6",
+          "hint": "len(\"Python\") returns the number of characters. Put the text inside len(...), then print the result.",
+          "solution_code": "print(len(\"Python\"))",
+          "input_values": "",
+          "points": 15,
+          "chapter_id": "c01",
+          "chapter_title": "Make Python talk",
+          "walkthrough": [
+            "len(\"Python\") counts each character inside the quote marks; the quote marks are not included.",
+            "print(...) displays the number returned by len(...), so the output is 6."
           ]
         },
         {
@@ -523,7 +545,7 @@
     {
       "id": "c06",
       "title": "Ask the user for input",
-      "desc": "Make tiny interactive programs that ask questions and respond to typed answers.",
+      "desc": "Read answers from a user, convert text to numbers, then combine everything in a calculator capstone.",
       "activities": [
         {
           "id": "c06-l01",
@@ -611,6 +633,29 @@
           "walkthrough": [
             "The first input stores the snack name; the second is converted to a number with int(...).",
             "The f-string combines count and snack in one readable order message."
+          ]
+        },
+        {
+          "id": "c06-p17",
+          "title": "Capstone: Build your own calculator",
+          "kind": "project",
+          "concept": "Bring together input(), float(), variables, and arithmetic to calculate four results from two numbers.",
+          "analogy": "A calculator reads two numbers, then applies each operation to those same values.",
+          "example_code": "first = 8.0\nsecond = 2.0\nprint(\"Add:\", first + second)\nprint(\"Multiply:\", first * second)",
+          "example_output": "Add: 10.0\nMultiply: 16.0",
+          "task": "Build a calculator that asks for two numbers, then prints their sum, difference, product, and quotient. Use the sample inputs 8 and 2. Write the four calculation lines yourself; hints and the worked solution are available if you get stuck.",
+          "starter_code": "first = float(input(\"First number: \"))\nsecond = float(input(\"Second number: \"))\n\n# Print the sum, difference, product, and quotient below.\n# Example: print(\"Add:\", first + second)",
+          "expected_output": "First number: 8\nSecond number: 2\nAdd: 10.0\nSubtract: 6.0\nMultiply: 16.0\nDivide: 4.0",
+          "hint": "First, convert each input to a number with float(...). Then use +, -, *, and / in four print lines. Test with 8 and 2.",
+          "solution_code": "first = float(input(\"First number: \"))\nsecond = float(input(\"Second number: \"))\nprint(\"Add:\", first + second)\nprint(\"Subtract:\", first - second)\nprint(\"Multiply:\", first * second)\nprint(\"Divide:\", first / second)",
+          "input_values": "8\n2",
+          "points": 40,
+          "chapter_id": "c06",
+          "chapter_title": "Ask the user for input",
+          "walkthrough": [
+            "input(...) reads the characters typed by the learner; float(...) converts those characters into a number Python can calculate with.",
+            "Use the same two numeric variables for all four operations: + adds, - subtracts, * multiplies, and / divides.",
+            "Each print line includes a short label followed by the calculated result, which makes the calculator easy to read."
           ]
         }
       ]
