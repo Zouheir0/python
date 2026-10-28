@@ -441,6 +441,7 @@ async function completeActivity(activity, output, feedback) {
   }
   updateHeaderStats();
   const badge = $('.lesson-heading .tag:last-child'); if (badge) { badge.textContent = 'Complete'; badge.classList.add('green'); }
+  const repeatButton = $('[data-action="repeat-activity"]'); if (repeatButton && isDone(activity.id)) repeatButton.textContent = '↻ Review this lesson again';
 }
 function showLevelFeedback(xp,awardedPoints,feedback) {
   const oldLevel=Math.floor(Math.max(0,xp-awardedPoints)/100)+1; const newLevel=Math.floor(xp/100)+1;
