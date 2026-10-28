@@ -1,6 +1,5 @@
 import { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from './config.js';
 
-const PYODIDE_VERSION = 'v314.0.7';
 const LOCAL_KEY = 'python-path-local-v2';
 const DRAFT_KEY = 'python-path-drafts-v2';
 const $ = (selector, root = document) => root.querySelector(selector);
@@ -346,31 +345,47 @@ async function runActivityCode(example, check) {
 function mainButtonsDisabled(disabled) { $$('#main-content button[data-action="check-code"], #main-content button[data-action="run-custom"], #main-content button[data-action="run-example"], #main-content button[data-action="sandbox-run"]').forEach((button)=>button.disabled=disabled); }
 async function executePython(code, inputText='') {
   return new Promise((resolve) => {
-    let worker; let blobUrl; let timer; let settled=false;
-    const finish=(result)=>{if(settled)return;settled=true;if(timer)clearTimeout(timer);try{worker?.terminate();}catch{}if(blobUrl)URL.revokeObjectURL(blobUrl);resolve(result);};
-    const workerSource = `import { loadPyodide } from "https://cdn.jsdelivr.net/pyodide/${PYODIDE_VERSION}/full/pyodide.mjs";
-      const pyodidePromise = loadPyodide({ indexURL: "https://cdn.jsdelivr.net/pyodide/${PYODIDE_VERSION}/full/" });
-      self.onmessage = async (event) => {
-        const { id, code, inputs } = event.data;
-        try {
-          const pyodide = await pyodidePromise;
-          pyodide.globals.set("_pp_student_code", code);
-          const inputProxy = pyodide.toPy(String(inputs || "").split("\\n"));
-          pyodide.globals.set("_pp_user_inputs", inputProxy);
-          const result = await pyodide.runPythonAsync(\`import builtins, io, sys, traceback\n_pp_old_stdout = sys.stdout\n_pp_old_stderr = sys.stderr\n_pp_old_input = builtins.input\n_pp_console = io.StringIO()\n_pp_error = None\n_pp_lines = list(_pp_user_inputs)\ndef _pp_input(prompt=""):\n    if prompt:\n        _pp_console.write(str(prompt))\n    if not _pp_lines:\n        raise EOFError("No input line was provided. Add an answer in Input values.")\n    _pp_value = _pp_lines.pop(0)\n    _pp_console.write(_pp_value + "\\\\n")\n    return _pp_value\ntry:\n    builtins.input = _pp_input\n    sys.stdout = _pp_console\n    sys.stderr = _pp_console\n    exec(compile(_pp_student_code, "<your code>", "exec"), {"__name__": "__main__"})\nexcept BaseException as _pp_exc:\n    _pp_error = traceback.format_exc()\nfinally:\n    sys.stdout = _pp_old_stdout\n    sys.stderr = _pp_old_stderr\n    builtins.input = _pp_old_input\n{"output": _pp_console.getvalue(), "error": _pp_error}\`);
-          const converted = result.toJs({ dict_converter: Object.fromEntries });
-          result.destroy();
-          inputProxy.destroy();
-          self.postMessage({ id, result: converted });
-        } catch (error) { self.postMessage({ id, result: { output: "", error: String(error?.message || error) } }); }
-      };`;
+    let worker; let timer; let settled=false;
+    const finish=(result)=>{
+      if(settled)return;
+      settled=true;
+      if(timer)clearTimeout(timer);
+      try{worker?.terminate();}catch{}
+      resolve(result);
+    };
     try {
-      const blob = new Blob([workerSource], { type: 'text/javascript' }); blobUrl=URL.createObjectURL(blob); worker=new Worker(blobUrl,{type:'module'});
-      timer=setTimeout(()=>finish({output:'',error:'Execution timed out after 6 seconds. Check that your loop has a stopping condition.'}),6000);
-      worker.onmessage=(event)=>{if(event.data?.id!==1)return;finish(event.data.result||{output:'',error:'Python did not return a result.'});};
-      worker.onerror=(event)=>finish({output:'',error:`Python runtime failed to start: ${event.message||'unknown worker error'}. Check your connection to the runtime CDN.`});
-      worker.postMessage({id:1,code:String(code||''),inputs:String(inputText||'')});
-    } catch (error) { finish({output:'',error:`Could not start the Python worker: ${error.message}`}); }
+      // A same-origin worker avoids Blob-worker CSP and module-import failures.
+      worker = new Worker(new URL('./python-worker.js', import.meta.url), { type: 'module', name: 'python-path-runtime' });
+      timer = setTimeout(() => finish({
+        output: '',
+        error: 'Python runtime did not finish loading after 45 seconds. Check your connection to cdn.jsdelivr.net, then refresh and try again.'
+      }), 45000);
+      worker.onmessage = (event) => {
+        const data = event.data || {};
+        if (data.id !== 1) return;
+        if (data.type === 'ready') {
+          if (timer) clearTimeout(timer);
+          timer = setTimeout(() => finish({
+            output: '',
+            error: 'Execution timed out after 6 seconds. Check that your loop has a stopping condition.'
+          }), 6000);
+          return;
+        }
+        if (data.type === 'result') finish(data.result || { output: '', error: 'Python did not return a result.' });
+      };
+      worker.onerror = (event) => {
+        const details = [event.message, event.filename, event.lineno ? 'line ' + event.lineno : ''].filter(Boolean).join(' ');
+        finish({
+          output: '',
+          error: 'Could not load Python runtime in the worker. ' + (details || 'The browser blocked the worker module or runtime CDN.') + ' Check that python-worker.js is deployed and your network allows cdn.jsdelivr.net.'
+        });
+        event.preventDefault?.();
+      };
+      worker.onmessageerror = () => finish({ output: '', error: 'The browser could not read the Python worker response. Refresh and try again.' });
+      worker.postMessage({ id: 1, code: String(code || ''), inputs: String(inputText || '') });
+    } catch (error) {
+      finish({ output: '', error: 'Could not start the Python worker: ' + (error?.message || error) });
+    }
   });
 }
 async function completeActivity(activity, output, feedback) {
@@ -430,10 +445,16 @@ async function submitAuth(form) {
   } catch(error) { showAccountMessage(normalizeAuthError(error.message),'bad'); }
 }
 function normalizeAuthError(message) {
-  const text=String(message||'Request failed.');
-  if(/invalid login credentials/i.test(text))return 'Email or password was not accepted. Check them and try again.';
-  if(/already registered|already exists/i.test(text))return 'That email may already have an account. Try signing in.';
-  if(/username/i.test(text)&&/unique|duplicate/i.test(text))return 'That username is already in use. Choose another one.';
+  const text = String(message || 'Request failed.');
+  if (/PGRST125|Invalid path specified in request URL/i.test(text)) {
+    return 'Supabase returned an invalid Data API path. The project URL in config.js must be only the https://PROJECT.supabase.co origin, without /rest/v1, /auth/v1, or a dashboard path. If the URL is correct, check the failed request in Developer Tools → Network.';
+  }
+  if (/PGRST205|Could not find the table/i.test(text)) {
+    return 'Supabase cannot find a required table or its schema cache is stale. Open supabase/schema.sql in this GitHub repository, run the entire file in the Supabase SQL Editor, wait a few seconds, then retry. The script refreshes the Data API schema cache. Do not disable row-level security.';
+  }
+  if (/invalid login credentials/i.test(text)) return 'Email or password was not accepted. Check them and try again.';
+  if (/already registered|already exists/i.test(text)) return 'That email may already have an account. Try signing in.';
+  if (/username/i.test(text) && /unique|duplicate/i.test(text)) return 'That username is already in use. Choose another one.';
   return text;
 }
 function showAccountMessage(message,kind='info') { const el=$('#account-message');if(el){el.innerHTML=`<div class="notice ${kind}">${esc(message)}</div>`;} }

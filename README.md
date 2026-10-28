@@ -38,7 +38,7 @@ The backend is optional until you want accounts and cross-device progress. Do no
 
 1. Create a Supabase project at <https://supabase.com/dashboard>.
 2. Open **SQL Editor** and run the complete `supabase/schema.sql` file from this repository. It creates profiles, private lesson records, hidden database-side challenge output records, row-level security policies, the signup trigger, a constrained leaderboard view, and the XP awarding function. Review the SQL before executing it.
-3. In Supabase **Project Settings / API** (the labels may vary), copy the project URL and a **publishable key** (or the legacy `anon` key). Put them in the two empty constants in `config.js`:
+3. This repository's `config.js` is already set to the Supabase project URL and publishable key previously supplied for Python Path. Confirm both values in your Supabase **Project Settings / API** page. If you use a different project, update those two constants. The publishable/anon key is public by design only when row-level security and grants are correct:
 
    ```js
    export const SUPABASE_URL = 'https://YOUR_PROJECT.supabase.co';
@@ -75,7 +75,7 @@ This project is educational software for teenagers, but age ranges vary. Before 
 
 ## Local quality checks
 
-Run `python scripts/check_course.py` to test every one of the 68 authored solution programs against its expected output, verify the database seed contains every activity ID, and confirm the browser config ships blank. The course JavaScript can also be syntax-checked with `node --check app.js` and `node --check curriculum-source.mjs`. These are source checks, not a substitute for live browser and database testing.
+Run `python scripts/check_course.py` to test every one of the 68 authored solution programs against its expected output, verify the database seed contains every activity ID, and confirm the browser config ships blank. CI also checks `python-worker.js`, applies `supabase/schema.sql` twice to a disposable PostgreSQL database, verifies table grants and row-level security, and runs Playwright browser smoke tests against real Pyodide. The browser tests replace `config.js` with blank values so they never read or write real student data. These checks still do not replace live Supabase Auth and deployed-domain security tests.
 
 ## Security documentation
 
