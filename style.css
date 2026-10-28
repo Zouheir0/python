@@ -5,3 +5,6 @@
 
 /* Guided learning: decode examples before students try the challenge. */
 .code-walkthrough{margin-top:16px;padding:14px 15px;border:1px solid #2d4a5e;background:#0d1b29;border-radius:4px}.code-walkthrough h2{font-size:15px;margin:3px 0 8px}.code-walkthrough ol{margin:0;padding-left:20px;color:#c7d7e8;font-size:12px;line-height:1.7}.code-walkthrough li+li{margin-top:5px}.code-walkthrough .small{margin:10px 0 0;color:#91a8c1}.prediction-box{margin-top:10px;padding:10px 12px;border:1px dashed #3a5267;background:#0b1521;color:#c4d4e6;font-size:12px}.prediction-box summary{cursor:pointer;font-weight:700;color:#b8d5ec}.prediction-box p{margin:9px 0 4px}.prediction-box pre{margin-bottom:0}.reward-note{margin:8px 0 0;color:#a9bad0;line-height:1.55}
+
+/* Native-feeling stdin: the answer field sits inline at the end of console output. */
+.console-output{max-height:320px;overflow:auto;scrollbar-gutter:stable}.console-stdin{display:inline-block;min-width:6ch;max-width:min(48ch,100%);width:6ch;background:transparent;border:0;border-bottom:1px solid #55dca2;border-radius:0;color:inherit;padding:0 1px;font:inherit;line-height:inherit;vertical-align:baseline}.console-stdin:focus{border-bottom-color:var(--green)}.console-stop{padding:4px 8px;font-size:10px;flex:none}
