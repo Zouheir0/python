@@ -76,6 +76,12 @@ def main():
                 page.locator('button[data-action="check-code"]').click()
                 wait_for_text(page.locator("#challenge-feedback"), "7 XP bonus")
                 assert page.locator("#top-xp").inner_text().strip() == "15 XP"
+                page.locator('button[data-action="repeat-activity"]').click()
+                assert page.locator("#top-xp").inner_text().strip() == "15 XP", "Repeating a completed activity must preserve earned XP"
+                page.locator("#code-editor").fill('print("I wrote my first line!")')
+                page.locator('button[data-action="check-code"]').click()
+                wait_for_text(page.locator("#challenge-feedback"), "already complete")
+                assert page.locator("#top-xp").inner_text().strip() == "15 XP", "Repeating must not award duplicate XP"
                 page.locator('button.nav-button[data-view="sandbox"]').click()
                 page.locator("#sandbox-code").fill("print(2 + 5)")
                 page.locator('button[data-action="sandbox-run"]').click()
@@ -102,7 +108,7 @@ def main():
                 page.locator('button.nav-button[data-view="leaderboard"]').click()
                 assert "Leaderboard" in page.locator("#app").inner_text()
                 assert not page_errors, f"Uncaught browser errors: {page_errors}"
-                print("PASS: guided lessons render; solution gives half XP, independent retry upgrades to full XP; Python sandbox, errors, timeout recovery, and key views work")
+                print("PASS: guided lessons render; XP upgrades once, lesson review does not double-award XP; Python sandbox, errors, timeout recovery, and key views work")
             finally:
                 browser.close()
                 server.shutdown()
