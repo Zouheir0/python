@@ -1,7 +1,7 @@
 import { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from './config.js';
 
 const LOCAL_KEY = 'python-path-local-v2';
-const DRAFT_KEY = 'python-path-drafts-v2';
+const DRAFT_KEY = 'python-path-drafts-v3';
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
 const esc = (value) => String(value ?? '').replace(/[&<>"']/g, (ch) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' })[ch]);
@@ -24,9 +24,16 @@ function loadLocal() {
   } catch { return { completed: [] }; }
 }
 function saveLocal() { try { localStorage.setItem(LOCAL_KEY, JSON.stringify(state.local)); } catch {} }
-function loadDrafts() { try { return JSON.parse(localStorage.getItem(DRAFT_KEY) || '{}'); } catch { return {}; } }
+function clearGuestProgress() {
+  // Guest progress has no account owner; never let it appear as a newly signed-in user's progress.
+  state.local = { completed: [], awards: {} };
+  saveLocal();
+  try { localStorage.removeItem(`${DRAFT_KEY}-guest`); } catch {}
+}
+function draftStorageKey() { return state.user?.id ? `${DRAFT_KEY}-user-${state.user.id}` : `${DRAFT_KEY}-guest`; }
+function loadDrafts() { try { return JSON.parse(localStorage.getItem(draftStorageKey()) || '{}'); } catch { return {}; } }
 function saveDraft(id, code, inputs, usedSolution = state.solutionUsed) {
-  const drafts = loadDrafts(); drafts[id] = { code, inputs, usedSolution: id === 'sandbox' ? false : Boolean(usedSolution) }; try { localStorage.setItem(DRAFT_KEY, JSON.stringify(drafts)); } catch {}
+  const drafts = loadDrafts(); drafts[id] = { code, inputs, usedSolution: id === 'sandbox' ? false : Boolean(usedSolution) }; try { localStorage.setItem(draftStorageKey(), JSON.stringify(drafts)); } catch {}
 }
 function getDraft(id) { return loadDrafts()[id] || null; }
 function allActivities() { return state.chapters.flatMap((chapter) => chapter.activities); }
@@ -92,6 +99,7 @@ async function initBackend() {
         state.cloudCompleted = new Set();
         state.backendError = '';
         state.lastRun = null;
+        if (nextUserId) clearGuestProgress();
         updateHeaderStats();
         if (state.view === 'account') render();
       }
@@ -204,7 +212,7 @@ function renderLearn() {
 function renderChapter() {
   const chapter = state.chapters.find((c) => c.id === state.chapterId) || state.chapters[0];
   const done = chapterActivityCount(chapter);
-  return `<div class="eyebrow">Chapter ${String(state.chapters.indexOf(chapter)+1).padStart(2,'0')}</div><h1 class="page-title">${esc(chapter.title)}</h1><p class="lead">${esc(chapter.desc)}</p><div class="chapter-actions"><button class="button quiet" data-action="navigate" data-view="learn">← All chapters</button><button class="button primary" data-action="open-activity" data-id="${(chapter.activities.find(a=>!isDone(a.id))||chapter.activities[0]).id}">Start next activity →</button></div><section class="panel" style="padding:14px 16px;margin-bottom:14px"><div class="progress-labels"><span>${done} of ${chapter.activities.length} complete</span><span>${chapter.activities.reduce((n,a)=>n+a.points,0)} possible XP</span></div><div class="progress-track"><div class="progress-fill" style="width:${Math.round(done/chapter.activities.length*100)}%"></div></div><p class="small">Each activity has an editable code editor. After a few lessons, you will make a small project that combines the ideas.</p></section><div class="activity-list">${chapter.activities.map((a,i)=>`<button class="activity-row" data-action="open-activity" data-id="${a.id}"><span class="activity-index ${isDone(a.id)?'done':''}">${isDone(a.id)?'✓':String(i+1).padStart(2,'0')}</span><span class="activity-copy"><span class="activity-title">${esc(a.title)}</span><span class="activity-sub">${a.kind==='project'?'Put your skills together in a project.':'Learn one new idea and practise it in code.'}</span></span><span class="activity-right"><span class="tag ${a.kind==='project'?'gold':''}">${a.kind==='project'?'PROJECT':'LESSON'}</span><span>up to ${a.points} XP</span><span>→</span></span></button>`).join('')}</div>`;
+  return `<div class="eyebrow">Chapter ${String(state.chapters.indexOf(chapter)+1).padStart(2,'0')}</div><h1 class="page-title">${esc(chapter.title)}</h1><p class="lead">${esc(chapter.desc)}</p><div class="chapter-actions"><button class="button quiet" data-action="navigate" data-view="learn">← All chapters</button><button class="button primary" data-action="open-activity" data-id="${(chapter.activities.find(a=>!isDone(a.id))||chapter.activities[0]).id}">Start next activity →</button></div><section class="panel" style="padding:14px 16px;margin-bottom:14px"><div class="progress-labels"><span>${done} of ${chapter.activities.length} complete</span><span>${chapter.activities.reduce((n,a)=>n+a.points,0)} possible XP</span></div><div class="progress-track"><div class="progress-fill" style="width:${Math.round(done/chapter.activities.length*100)}%"></div></div><p class="small">Each activity has an editable code editor. After a few lessons, you will make a small project that combines the ideas.</p></section><div class="activity-list">${chapter.activities.map((a,i)=>`<button class="activity-row" data-action="open-activity" data-id="${a.id}"><span class="activity-index ${isDone(a.id)?'done':''}">${isDone(a.id)?'✓':String(i+1).padStart(2,'0')}</span><span class="activity-copy"><span class="activity-title">${esc(a.title)}</span><span class="activity-sub">${isDone(a.id) ? 'Completed · open to review and practise again.' : (a.kind==='project'?'Put your skills together in a project.':'Learn one new idea and practise it in code.')}</span></span><span class="activity-right"><span class="tag ${a.kind==='project'?'gold':''}">${a.kind==='project'?'PROJECT':'LESSON'}</span>${isDone(a.id)?'<span class="tag green">REVIEW</span>':''}<span>up to ${a.points} XP</span><span>→</span></span></button>`).join('')}</div>`;
 }
 function renderActivity() {
   const activity = currentActivity();
@@ -221,15 +229,15 @@ function renderActivity() {
   <details class="prediction-box"><summary>Predict first — then reveal the example output</summary><p class="small">Look at the code and guess what Python will display. Then compare your prediction.</p><pre class="demo-code">${esc(activity.example_output || "(No output)")}</pre></details>
   <div class="section-heading" style="margin-top:21px"><div><h2>See an example</h2><p class="small" style="margin:3px 0 0">Run this small example and compare it with the result.</p></div></div><pre class="demo-code">${esc(activity.example_code)}</pre><div class="button-row"><button class="button" data-action="run-example" ${state.running?'disabled':''}>Run example</button><span class="small">Runs in your browser, not on a server.</span></div><div class="demo-output placeholder" id="example-console" aria-live="polite">Press Run example to see the result.</div>
   <div class="section-heading" style="margin-top:22px"><div><h2>Your turn</h2><p class="small" style="margin:3px 0 0">The goal is to change or write code, not select an answer.</p></div></div><div class="task-box"><div class="task-label">${activity.kind === "project" ? "YOUR MISSION" : "QUICK CHALLENGE"}</div><p>${esc(activity.task)}</p></div><p class="small">Run your code. If the output matches the goal, you earn XP and unlock the next step. If it does not, you can try again.</p>
-  <div class="lesson-meta"><button class="button quiet" data-action="open-chapter" data-id="${chapter.id}">Back to chapter</button><div class="button-row">${prev?`<button class="button quiet" data-action="open-activity" data-id="${prev.id}">← Previous</button>`:''}${next?`<button class="button primary" data-action="open-activity" data-id="${next.id}">Next →</button>`:''}</div></div>
+  <div class="lesson-meta"><div class="button-row"><button class="button quiet" data-action="repeat-activity">${isDone(activity.id)?'↻ Review this lesson again':'↻ Restart this lesson'}</button><button class="button quiet" data-action="open-chapter" data-id="${chapter.id}">Back to chapter</button></div><div class="button-row">${prev?`<button class="button quiet" data-action="open-activity" data-id="${prev.id}">← Previous</button>`:''}${next?`<button class="button primary" data-action="open-activity" data-id="${next.id}">Next →</button>`:''}</div></div>
   </article><aside class="panel editor-card"><div class="editor-head"><div><h2>Code editor</h2><div class="editor-help">Type, edit, or delete anything. Use Tab for 4 spaces. Ctrl/⌘ + Enter runs your code.</div></div><span class="tag">Python</span></div><label class="input-label" for="code-editor">Your code</label><textarea class="code-editor" id="code-editor" spellcheck="false" autocomplete="off" autocapitalize="off" aria-label="Write your Python code">${esc(starter)}</textarea>
   <details class="input-details" ${activity.input_values ? 'open' : ''}><summary class="input-label">Input values for input() <span class="small">(one answer per line)</span></summary><textarea class="input-editor" id="input-values" spellcheck="false" aria-label="Values provided to input function">${esc(inputValues)}</textarea></details>
-  <div class="button-row" style="margin-top:12px"><button class="button primary" data-action="check-code" ${state.running?'disabled':''}>▶ Run &amp; check</button><button class="button" data-action="run-custom" ${state.running?'disabled':''}>Run only</button><button class="button quiet" data-action="reset-code">Reset</button></div>
+  <div class="button-row" style="margin-top:12px"><button class="button primary" data-action="check-code" ${state.running?'disabled':''}>▶ Run &amp; check</button><button class="button" data-action="run-custom" ${state.running?'disabled':''}>Run only</button><button class="button quiet" data-action="reset-code">Reset code</button></div>
   <div class="console-card"><div class="console-head"><span class="console-title">Python console</span><span class="tag" id="run-status">READY</span></div><div class="console-output" id="challenge-console" aria-live="polite">Your output will appear here.</div></div>
   <div id="challenge-feedback"></div>
   <div class="button-row" style="margin-top:10px"><button class="button quiet" data-action="toggle-hint">${state.hintOpen?'Hide hint':'Need a hint?'}</button><button class="button quiet" data-action="toggle-solution">${state.solutionOpen?'Hide solution':'Show solution'}</button></div><p class="small reward-note">Hints never lower your XP. Putting the full solution in the editor earns half credit; reset and solve it yourself later to earn the rest.</p>
   <div id="hint-holder">${state.hintOpen?`<div class="hint-panel"><strong>Hint:</strong> ${esc(activity.hint)}</div>`:''}</div>${state.solutionOpen?`<div class="hint-panel"><strong>One working solution:</strong><pre class="demo-code">${esc(activity.solution_code)}</pre><button class="button" data-action="use-solution">Put solution in editor</button></div>`:''}
-  ${isDone(activity.id)?`<div class="feedback good">You have completed this activity. Revisit it any time to practise or earn the remaining XP if you first used the full solution.</div>`:''}</aside></section>`;
+  ${isDone(activity.id)?`<div class="feedback good">You have completed this activity. Use “Review this lesson again” to restart with the starter code. Repeating will not remove completion or award XP twice. If you first used the full solution, solve it independently to earn the remaining XP.</div>`:''}</aside></section>`;
 }
 function renderSandbox() {
   const draft = getDraft('sandbox') || {code:`name = input("What is your name? ")\nprint(f"Hello, {name}!")`,inputs:'Python Path'};
@@ -246,7 +254,7 @@ function renderAccount() {
   if (state.user) return renderSignedInAccount();
   if (state.recoveryMode) return `<div class="eyebrow">Account recovery</div><h1 class="page-title">Choose a new password</h1><section class="panel" style="padding:18px;max-width:580px;margin-top:18px"><form id="password-recovery-form" class="form-grid"><div class="form-field full"><label for="recovery-password">New password (at least 10 characters)</label><input id="recovery-password" name="password" type="password" minlength="10" required autocomplete="new-password"></div><div class="form-field full"><button class="button primary" type="submit">Update password</button></div></form><div id="account-message"></div></section>`;
   const signup=state.accountTab==='signup';
-  return `<div class="eyebrow">Student account</div><h1 class="page-title">${signup?'Create your account':'Welcome back'}</h1><p class="lead">Save progress across devices. You choose whether to share your username and XP on the public leaderboard.</p><div class="tabs"><button class="tab ${!signup?'active':''}" data-action="account-tab" data-tab="signin">Sign in</button><button class="tab ${signup?'active':''}" data-action="account-tab" data-tab="signup">Create account</button></div><section class="panel" style="padding:18px;max-width:620px"><form id="auth-form" class="form-grid">${signup?`<div class="form-field full"><label for="signup-username">Username (3 to 20 letters, numbers, or underscores)</label><input id="signup-username" name="username" minlength="3" maxlength="20" pattern="[A-Za-z0-9_]{3,20}" required autocomplete="username" placeholder="codelearner15"></div>`:''}<div class="form-field full"><label for="auth-email">Email address</label><input id="auth-email" name="email" type="email" required autocomplete="email" maxlength="254"></div><div class="form-field full"><label for="auth-password">Password (at least 10 characters)</label><input id="auth-password" name="password" type="password" required minlength="10" autocomplete="${signup?'new-password':'current-password'}"></div>${signup?`<div class="form-field full"><label class="check-row"><input id="leaderboard-opt-in" type="checkbox"><span>I choose to show my username and XP on the public leaderboard. My email and lesson history will not be public.</span></label></div>`:''}<div class="form-field full"><button class="button primary" type="submit">${signup?'Create account':'Sign in'}</button></div></form><div class="button-row" style="margin-top:10px">${!signup?'<button class="button quiet" data-action="password-reset">Email me a password reset link</button>':''}</div><div id="account-message" style="margin-top:13px"></div></section><p class="small" style="max-width:620px;margin-top:12px">Use a username rather than your real name. Do not share a password with classmates. If you opt into the leaderboard, your username and XP are publicly visible.</p>`;
+  return `<div class="eyebrow">Student account</div><h1 class="page-title">${signup?'Create your account':'Welcome back'}</h1><p class="lead">Save progress across devices. You choose whether to share your username and XP on the public leaderboard.</p><div class="tabs"><button class="tab ${!signup?'active':''}" data-action="account-tab" data-tab="signin">Sign in</button><button class="tab ${signup?'active':''}" data-action="account-tab" data-tab="signup">Create account</button></div><section class="panel" style="padding:18px;max-width:620px"><form id="auth-form" class="form-grid">${signup?`<div class="form-field full"><label for="signup-username">Username (3 to 20 letters, numbers, or underscores)</label><input id="signup-username" name="username" minlength="3" maxlength="20" pattern="[A-Za-z0-9_]{3,20}" required autocomplete="username" placeholder="codelearner15"></div>`:''}<div class="form-field full"><label for="auth-email">Email address</label><input id="auth-email" name="email" type="email" required autocomplete="email" maxlength="254"></div><div class="form-field full"><label for="auth-password">Password (at least 10 characters)</label><input id="auth-password" name="password" type="password" required minlength="10" autocomplete="${signup?'new-password':'current-password'}"></div>${signup?`<div class="form-field full"><label class="check-row"><input id="leaderboard-opt-in" type="checkbox"><span>I choose to show my username and XP on the public leaderboard. My email and lesson history will not be public.</span></label></div>`:''}<div class="form-field full"><button class="button primary" type="submit">${signup?'Create account':'Sign in'}</button></div></form><div class="button-row" style="margin-top:10px">${!signup?'<button class="button quiet" data-action="password-reset">Email me a password reset link</button>':''}</div><div id="account-message" style="margin-top:13px"></div></section><p class="small" style="max-width:620px;margin-top:12px">Use a username rather than your real name. Do not share a password with classmates. If you opt into the leaderboard, your username and XP are publicly visible. On a shared device, guest-only progress and drafts are cleared when you sign in or create an account so they cannot be attributed to another learner; existing cloud account progress remains intact.</p>`;
 }
 function renderSignedInAccount() {
   const p=state.profile || {};
@@ -316,6 +324,7 @@ async function handleAction(action, button) {
   if (action==='navigate') { state.view=button.dataset.view; state.hintOpen=false; state.solutionOpen=false; render(); window.scrollTo({top:0,behavior:'auto'}); return; }
   if (action==='open-chapter') { state.chapterId=id; state.view='chapter'; state.hintOpen=false;state.solutionOpen=false;render();window.scrollTo({top:0,behavior:'auto'});return; }
   if (action==='open-activity') { state.activityId=id; const a=state.activities.find(x=>x.id===id); state.chapterId=a?.chapter_id||null;state.view='activity';state.hintOpen=false;state.solutionOpen=false;state.lastRun=null;state.solutionUsed=Boolean(getDraft(id)?.usedSolution);render();window.scrollTo({top:0,behavior:'auto'});return; }
+  if (action==='repeat-activity') { const a=currentActivity(); if(!a)return; state.solutionUsed=false; state.solutionOpen=false; state.hintOpen=false; state.lastRun=null; saveDraft(a.id,a.starter_code,a.input_values||'',false); render(); window.scrollTo({top:0,behavior:'auto'}); return; }
   if (action==='run-example') { await runActivityCode(true,false); return; }
   if (action==='check-code') { await runActivityCode(false,true); return; }
   if (action==='run-custom') { await runActivityCode(false,false); return; }
@@ -432,6 +441,7 @@ async function completeActivity(activity, output, feedback) {
   }
   updateHeaderStats();
   const badge = $('.lesson-heading .tag:last-child'); if (badge) { badge.textContent = 'Complete'; badge.classList.add('green'); }
+  const repeatButton = $('[data-action="repeat-activity"]'); if (repeatButton && isDone(activity.id)) repeatButton.textContent = '↻ Review this lesson again';
 }
 function showLevelFeedback(xp,awardedPoints,feedback) {
   const oldLevel=Math.floor(Math.max(0,xp-awardedPoints)/100)+1; const newLevel=Math.floor(xp/100)+1;
@@ -468,6 +478,7 @@ async function submitAuth(form) {
       if(!validUsername(username)){showAccountMessage('Username must be 3 to 20 letters, numbers, or underscores.','bad');return;}
       const {data,error}=await state.supabase.auth.signUp({email,password,options:{data:{username,leaderboard_public:$('#leaderboard-opt-in')?.checked===true},emailRedirectTo:window.location.href.split('#')[0]}});
       if(error)throw error;
+      clearGuestProgress();
       if(data.session){
         if (state.user?.id !== data.user?.id) { state.profile = null; state.cloudCompleted = new Set(); state.backendError = ''; }
         state.user = data.user; state.session = data.session;
@@ -481,6 +492,7 @@ async function submitAuth(form) {
       }
     } else {
       const {data,error}=await state.supabase.auth.signInWithPassword({email,password});if(error)throw error;
+      clearGuestProgress();
       if (state.user?.id !== data.user.id) { state.profile = null; state.cloudCompleted = new Set(); state.backendError = ''; updateHeaderStats(); }
       state.user=data.user;state.session=data.session;await refreshCloudProgress(false,data.user.id);state.view='account';showNotice('Signed in successfully.','good');render();
     }
