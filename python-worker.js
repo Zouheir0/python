@@ -1,26 +1,15 @@
-// Classic dedicated worker for Python Path.
-// importScripts avoids cross-origin ES-module worker loading issues.
-// Keep the Pyodide runtime script and indexURL on the same pinned release.
-const PYODIDE_VERSION = "v314.0.7";
-const PYODIDE_INDEX_URL = "https://cdn.jsdelivr.net/pyodide/" + PYODIDE_VERSION + "/full/";
-const PYODIDE_SCRIPT_URL = PYODIDE_INDEX_URL + "pyodide.js";
+// Python Path uses the official Pyodide ES-module loader inside a module worker.
+// Pyodide 314.x requires a module-type worker; classic importScripts workers are unsupported.
+import { loadPyodide } from "https://cdn.jsdelivr.net/pyodide/v314.0.7/full/pyodide.mjs";
 
-try {
-  importScripts(PYODIDE_SCRIPT_URL);
-} catch (error) {
-  self.postMessage({ id: 1, type: "result", result: { output: "", error: "Could not download the Python engine from " + PYODIDE_SCRIPT_URL + ". Check that the browser or school network allows cdn.jsdelivr.net. Details: " + String(error && (error.message || error)) } });
-}
+const PYODIDE_INDEX_URL = "https://cdn.jsdelivr.net/pyodide/v314.0.7/full/";
 
 self.addEventListener("message", async (event) => {
   const { id, code, inputs } = event.data || {};
   if (!Number.isInteger(id)) return;
-  if (typeof self.loadPyodide !== "function") {
-    self.postMessage({ id, type: "result", result: { output: "", error: "The Python engine script did not load. Refresh the page and try again." } });
-    return;
-  }
   try {
     self.postMessage({ id, type: "status", stage: "loading" });
-    const pyodide = await self.loadPyodide({ indexURL: PYODIDE_INDEX_URL });
+    const pyodide = await loadPyodide({ indexURL: PYODIDE_INDEX_URL });
     self.postMessage({ id, type: "ready" });
     pyodide.globals.set("_pp_student_code", String(code ?? ""));
     const inputProxy = pyodide.toPy(String(inputs ?? "").split("\n"));

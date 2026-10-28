@@ -67,7 +67,7 @@ The database prevents a visitor from directly setting arbitrary XP, prevents ano
 
 Pyodide is a WebAssembly build of CPython. This app loads a pinned Pyodide release in a module Web Worker so student code runs separately from the page's UI. The worker is terminated after six seconds. That protects the interface from simple infinite loops, but it is not a security boundary for running confidential or hostile workloads. Student code and input are processed in the browser and are not intentionally sent to Python Path's Supabase database. Never type passwords or personal information into the editor.
 
-The app runs Pyodide through a classic same-origin worker and a pinned runtime CDN URL, and loads the Supabase JavaScript SDK from jsDelivr at a pinned version. Both runtime and SDK require a network connection. For higher supply-chain control, self-host reviewed copies of the runtime and SDK and update them through a reviewed dependency process.
+The app runs Pyodide through a same-origin ES-module worker, using the official pinned Pyodide ES-module loader, and loads the Supabase JavaScript SDK from jsDelivr at a pinned version. Both runtime and SDK require a network connection. For higher supply-chain control, self-host reviewed copies of the runtime and SDK and update them through a reviewed dependency process.
 
 ## Child privacy and public launch
 

@@ -16,6 +16,8 @@ def wait_for_text(locator, text, timeout=90):
         try:
             last = locator.inner_text(timeout=500)
             if text in last: return last
+            if any(marker in last for marker in ('Could not download the Python engine', 'Python module worker failed', 'The Python engine script did not load')):
+                raise AssertionError(f'Python runtime failed before producing output: {last}')
         except Exception: pass
         time.sleep(0.25)
     raise AssertionError(f'Timed out waiting for {text!r}; last text was {last!r}')

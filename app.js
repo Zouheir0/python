@@ -348,21 +348,22 @@ async function executePython(code, inputText='') {
     let worker; let timer; let settled = false;
     const finish = (result) => { if (settled) return; settled = true; if (timer) clearTimeout(timer); try { worker?.terminate(); } catch {} resolve(result); };
     try {
-      worker = new Worker(new URL('./python-worker.js', import.meta.url), { name: 'python-path-runtime' });
+      // Pyodide's ESM runtime requires a module worker; the worker file itself is same-origin.
+      worker = new Worker(new URL('./python-worker.js', import.meta.url), { type: 'module', name: 'python-path-runtime' });
       timer = setTimeout(() => finish({ output: '', error: 'Python did not finish starting within 60 seconds. Check your connection to cdn.jsdelivr.net, then refresh and retry.' }), 60000);
       worker.onmessage = (event) => {
         const message = event.data || {}; if (message.id !== 1) return;
-        if (message.type === 'ready') { if (timer) clearTimeout(timer); timer = setTimeout(() => finish({ output: '', error: 'Execution timed out after 6 seconds. Check that your loop has a stopping condition.' }), 6000); }
+        if (message.type === 'ready') { if (timer) clearTimeout(timer); timer = setTimeout(() => finish({ output: '', error: 'Execution timed out after 8 seconds. Check that your loop has a stopping condition.' }), 8000); }
         else if (message.type === 'result') finish(message.result || { output: '', error: 'Python did not return a result.' });
       };
       worker.onerror = (event) => {
         const detail = [event.message, event.filename, event.lineno ? 'line ' + event.lineno : ''].filter(Boolean).join(' ');
-        finish({ output: '', error: 'Python worker failed to load. ' + (detail || 'The worker file or runtime CDN could not be loaded.') + ' Refresh after the latest GitHub Pages deployment completes. If it persists, check that the network permits cdn.jsdelivr.net.' });
+        finish({ output: '', error: 'Python module worker failed to load. ' + (detail || 'The worker file or runtime CDN could not be loaded.') + ' Confirm python-worker.js is deployed and the browser can load the Pyodide module from cdn.jsdelivr.net.' });
         event.preventDefault?.();
       };
       worker.onmessageerror = () => finish({ output: '', error: 'The browser could not read the Python worker response. Refresh and try again.' });
       worker.postMessage({ id: 1, code: String(code || ''), inputs: String(inputText || '') });
-    } catch (error) { finish({ output: '', error: 'Could not start the Python worker: ' + (error?.message || error) }); }
+    } catch (error) { finish({ output: '', error: 'Could not start the Python module worker: ' + (error?.message || error) }); }
   });
 }
 async function completeActivity(activity, output, feedback) {
