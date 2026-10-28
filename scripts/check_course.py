@@ -15,8 +15,8 @@ assert sum(a["kind"] == "project" for a in activities) == 16, "Expected one proj
 assert all(a.get("starter_code") and a.get("solution_code") for a in activities), "An activity lacks starter/solution code"
 
 assert all(isinstance(a.get('walkthrough'), list) and len(a['walkthrough']) >= 2 for a in activities), 'Every activity needs a code walkthrough of at least two steps'
-all_code = '\\n'.join(a.get(field, '') for a in activities for field in ('example_code', 'starter_code', 'solution_code'))
-early_code = '\\n'.join(a.get(field, '') for a in activities if a['chapter_id'] in {'c01', 'c02', 'c03'} for field in ('example_code', 'starter_code', 'solution_code'))
+all_code = '\n'.join(a.get(field, '') for a in activities for field in ('example_code', 'starter_code', 'solution_code'))
+early_code = '\n'.join(a.get(field, '') for a in activities if a['chapter_id'] in {'c01', 'c02', 'c03'} for field in ('example_code', 'starter_code', 'solution_code'))
 assert 'f"' not in early_code and "f'" not in early_code, 'An f-string appears before Chapter 4 teaches it'
 assert '+=' not in all_code and '-=' not in all_code, 'Unexplained augmented assignment remains in the curriculum'
 
