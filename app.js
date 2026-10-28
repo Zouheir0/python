@@ -10,7 +10,7 @@ const validUsername = (name) => /^[a-zA-Z0-9_]{3,20}$/.test(name);
 function needsCompleteLessonSchemaUpdate(error) {
   const code = String(error?.code || '');
   const message = String(error?.message || error || '');
-  return code === 'PGRST202' || (/public\\.complete_lesson/i.test(message) && /schema cache|could not find the function/i.test(message));
+  return code === 'PGRST202' || (/complete_lesson/i.test(message) && /schema cache|could not find the function/i.test(message));
 }
 
 const state = {
