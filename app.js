@@ -330,7 +330,8 @@ async function executePython(code, inputText='') {
     const finish = (result) => { if (settled) return; settled = true; if (timer) clearTimeout(timer); try { worker?.terminate(); } catch {} resolve(result); };
     try {
       // Pyodide's ESM runtime requires a module worker; the worker file itself is same-origin.
-      worker = new Worker(new URL('./python-worker.js', import.meta.url), { type: 'module', name: 'python-path-runtime' });
+      const workerUrl = new URL('./python-worker.js?v=20261028-3', import.meta.url);
+      worker = new Worker(workerUrl, { type: 'module', name: 'python-path-runtime' });
       timer = setTimeout(() => finish({ output: '', error: 'Python did not finish starting within 60 seconds. Check your connection to cdn.jsdelivr.net, then refresh and retry.' }), 60000);
       worker.onmessage = (event) => {
         const message = event.data || {}; if (message.id !== 1) return;
@@ -339,7 +340,7 @@ async function executePython(code, inputText='') {
       };
       worker.onerror = (event) => {
         const detail = [event.message, event.filename, event.lineno ? 'line ' + event.lineno : ''].filter(Boolean).join(' ');
-        finish({ output: '', error: 'Python module worker failed to load. ' + (detail || 'The worker file or runtime CDN could not be loaded.') + ' Confirm python-worker.js is deployed and the browser can load the Pyodide module from cdn.jsdelivr.net.' });
+        finish({ output: '', error: 'Python worker script could not start at ' + workerUrl.href + '. ' + (detail || 'The browser did not provide a script-loading detail. The new URL also bypasses cached copies of the older worker.') + ' Make sure the latest GitHub Pages deploy has finished, then reload the page.' });
         event.preventDefault?.();
       };
       worker.onmessageerror = () => finish({ output: '', error: 'The browser could not read the Python worker response. Refresh and try again.' });

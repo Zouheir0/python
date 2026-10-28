@@ -56,6 +56,8 @@ def main():
                 page.route("**/config.js", lambda route: route.fulfill(
                     status=200, content_type="text/javascript",
                     body="export const SUPABASE_URL = ''; export const SUPABASE_PUBLISHABLE_KEY = '';"))
+                worker_response = page.request.get(url.rsplit("/", 1)[0] + "/python-worker.js?v=20261028-3")
+                assert worker_response.status == 200, f"Python worker asset was not served: HTTP {worker_response.status}"
                 response = page.goto(url, wait_until="domcontentloaded")
                 assert response and response.status == 200, "Website did not return HTTP 200"
                 page.locator(".brand-title").wait_for(state="visible")
