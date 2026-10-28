@@ -345,47 +345,24 @@ async function runActivityCode(example, check) {
 function mainButtonsDisabled(disabled) { $$('#main-content button[data-action="check-code"], #main-content button[data-action="run-custom"], #main-content button[data-action="run-example"], #main-content button[data-action="sandbox-run"]').forEach((button)=>button.disabled=disabled); }
 async function executePython(code, inputText='') {
   return new Promise((resolve) => {
-    let worker; let timer; let settled=false;
-    const finish=(result)=>{
-      if(settled)return;
-      settled=true;
-      if(timer)clearTimeout(timer);
-      try{worker?.terminate();}catch{}
-      resolve(result);
-    };
+    let worker; let timer; let settled = false;
+    const finish = (result) => { if (settled) return; settled = true; if (timer) clearTimeout(timer); try { worker?.terminate(); } catch {} resolve(result); };
     try {
-      // A same-origin worker avoids Blob-worker CSP and module-import failures.
-      worker = new Worker(new URL('./python-worker.js', import.meta.url), { type: 'module', name: 'python-path-runtime' });
-      timer = setTimeout(() => finish({
-        output: '',
-        error: 'Python runtime did not finish loading after 45 seconds. Check your connection to cdn.jsdelivr.net, then refresh and try again.'
-      }), 45000);
+      worker = new Worker(new URL('./python-worker.js', import.meta.url), { name: 'python-path-runtime' });
+      timer = setTimeout(() => finish({ output: '', error: 'Python did not finish starting within 60 seconds. Check your connection to cdn.jsdelivr.net, then refresh and retry.' }), 60000);
       worker.onmessage = (event) => {
-        const data = event.data || {};
-        if (data.id !== 1) return;
-        if (data.type === 'ready') {
-          if (timer) clearTimeout(timer);
-          timer = setTimeout(() => finish({
-            output: '',
-            error: 'Execution timed out after 6 seconds. Check that your loop has a stopping condition.'
-          }), 6000);
-          return;
-        }
-        if (data.type === 'result') finish(data.result || { output: '', error: 'Python did not return a result.' });
+        const message = event.data || {}; if (message.id !== 1) return;
+        if (message.type === 'ready') { if (timer) clearTimeout(timer); timer = setTimeout(() => finish({ output: '', error: 'Execution timed out after 6 seconds. Check that your loop has a stopping condition.' }), 6000); }
+        else if (message.type === 'result') finish(message.result || { output: '', error: 'Python did not return a result.' });
       };
       worker.onerror = (event) => {
-        const details = [event.message, event.filename, event.lineno ? 'line ' + event.lineno : ''].filter(Boolean).join(' ');
-        finish({
-          output: '',
-          error: 'Could not load Python runtime in the worker. ' + (details || 'The browser blocked the worker module or runtime CDN.') + ' Check that python-worker.js is deployed and your network allows cdn.jsdelivr.net.'
-        });
+        const detail = [event.message, event.filename, event.lineno ? 'line ' + event.lineno : ''].filter(Boolean).join(' ');
+        finish({ output: '', error: 'Python worker failed to load. ' + (detail || 'The worker file or runtime CDN could not be loaded.') + ' Refresh after the latest GitHub Pages deployment completes. If it persists, check that the network permits cdn.jsdelivr.net.' });
         event.preventDefault?.();
       };
       worker.onmessageerror = () => finish({ output: '', error: 'The browser could not read the Python worker response. Refresh and try again.' });
       worker.postMessage({ id: 1, code: String(code || ''), inputs: String(inputText || '') });
-    } catch (error) {
-      finish({ output: '', error: 'Could not start the Python worker: ' + (error?.message || error) });
-    }
+    } catch (error) { finish({ output: '', error: 'Could not start the Python worker: ' + (error?.message || error) }); }
   });
 }
 async function completeActivity(activity, output, feedback) {
@@ -446,12 +423,9 @@ async function submitAuth(form) {
 }
 function normalizeAuthError(message) {
   const text = String(message || 'Request failed.');
-  if (/PGRST125|Invalid path specified in request URL/i.test(text)) {
-    return 'Supabase returned an invalid Data API path. The project URL in config.js must be only the https://PROJECT.supabase.co origin, without /rest/v1, /auth/v1, or a dashboard path. If the URL is correct, check the failed request in Developer Tools → Network.';
-  }
-  if (/PGRST205|Could not find the table/i.test(text)) {
-    return 'Supabase cannot find a required table or its schema cache is stale. Open supabase/schema.sql in this GitHub repository, run the entire file in the Supabase SQL Editor, wait a few seconds, then retry. The script refreshes the Data API schema cache. Do not disable row-level security.';
-  }
+  if (/PGRST125|Invalid path specified in request URL/i.test(text)) return 'Supabase returned an invalid API path. Check that config.js contains only the project origin, such as https://YOUR_PROJECT.supabase.co.';
+  if (/PGRST205|Could not find the table/i.test(text)) return 'Supabase cannot find a required table. Run the complete supabase/schema.sql from this repository in your Supabase SQL Editor, then refresh the schema cache. Do not disable row-level security.';
+  if (/PGRST202|Could not find the function|save_profile/i.test(text)) return 'The profile-saving database function is missing. Run the latest complete supabase/schema.sql from GitHub in the Supabase SQL Editor, wait a few seconds, then refresh this page.';
   if (/invalid login credentials/i.test(text)) return 'Email or password was not accepted. Check them and try again.';
   if (/already registered|already exists/i.test(text)) return 'That email may already have an account. Try signing in.';
   if (/username/i.test(text) && /unique|duplicate/i.test(text)) return 'That username is already in use. Choose another one.';
@@ -459,11 +433,18 @@ function normalizeAuthError(message) {
 }
 function showAccountMessage(message,kind='info') { const el=$('#account-message');if(el){el.innerHTML=`<div class="notice ${kind}">${esc(message)}</div>`;} }
 async function saveProfile(form) {
-  const username=String(new FormData(form).get('username')||'').trim().toLowerCase(); const isPublic=$('#profile-leaderboard')?.checked===true;
-  if(!validUsername(username)){showAccountMessage('Username must be 3 to 20 letters, numbers, or underscores.','bad');return;}
-  if(!state.supabase||!state.user)return;
-  try { const {data,error}=await state.supabase.from('profiles').update({username,leaderboard_public:isPublic}).eq('id',state.user.id).select('id,username,xp,leaderboard_public').single();if(error)throw error;state.profile=data;showAccountMessage('Profile settings saved.','good');await maybeLoadLeaderboard(false); }
-  catch(error){showAccountMessage(normalizeAuthError(error.message),'bad');}
+  const username = String(new FormData(form).get('username') || '').trim();
+  const isPublic = $('#profile-leaderboard')?.checked === true;
+  if (!validUsername(username)) { showAccountMessage('Username must be 3 to 20 letters, numbers, or underscores.', 'bad'); return; }
+  if (!state.supabase || !state.user) { showAccountMessage('Sign in again before saving your profile.', 'bad'); return; }
+  try {
+    const { data, error } = await state.supabase.rpc('save_profile', { p_username: username, p_leaderboard_public: isPublic });
+    if (error) throw error;
+    if (!data || typeof data !== 'object' || data.id !== state.user.id) throw new Error('The profile response was incomplete. Refresh and try again.');
+    state.profile = data; state.backendError = '';
+    showAccountMessage('Profile settings saved.', 'good');
+    await maybeLoadLeaderboard(false); updateHeaderStats();
+  } catch (error) { showAccountMessage(normalizeAuthError(error.message || 'Profile settings could not be saved.'), 'bad'); }
 }
 async function sendPasswordReset() {
   const email=$('#auth-email')?.value.trim();if(!email){showAccountMessage('Enter your email address first.','bad');return;}

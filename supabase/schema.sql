@@ -155,6 +155,71 @@ select username, xp from public.profiles where leaderboard_public is true;
 revoke all on public.leaderboard from public;
 grant select on public.leaderboard to anon, authenticated;
 
+-- Save only the authenticated user's profile and repair missing rows. XP is not client-editable.
+create or replace function public.save_profile(p_username text, p_leaderboard_public boolean)
+returns jsonb language plpgsql security definer set search_path = '' as $
+declare v_user_id uuid := auth.uid(); v_profile public.profiles%rowtype;
+begin
+  if v_user_id is null then raise exception 'Sign in is required.' using errcode = '28000'; end if;
+  if p_username is null or p_username !~ '^[A-Za-z0-9_]{3,20}
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_user_id uuid := auth.uid();
+  v_expected text;
+  v_points integer;
+  v_output text;
+  v_inserted integer;
+  v_total integer;
+begin
+  if v_user_id is null then raise exception 'Sign in is required.' using errcode = '28000'; end if;
+  if p_lesson_id is null or length(p_lesson_id) > 40 then
+    raise exception 'Invalid activity ID.' using errcode = '22023';
+  end if;
+  if p_output is null or length(p_output) > 10000 then
+    raise exception 'Output is missing or too long.' using errcode = '22023';
+  end if;
+  select expected_output, xp_award into v_expected, v_points
+  from private.lesson_challenges where lesson_id = p_lesson_id;
+  if not found then raise exception 'Unknown activity.' using errcode = '22023'; end if;
+  v_output := regexp_replace(replace(p_output, E'\r\n', E'\n'), E'\n+$', '');
+  if v_output is distinct from v_expected then
+    raise exception 'Output does not match the expected result.' using errcode = '22000';
+  end if;
+  insert into public.lesson_completions (user_id, lesson_id, xp_awarded)
+  values (v_user_id, p_lesson_id, v_points)
+  on conflict (user_id, lesson_id) do nothing;
+  get diagnostics v_inserted = row_count;
+  if v_inserted = 1 then
+    update public.profiles set xp = xp + v_points where id = v_user_id returning xp into v_total;
+    if not found then raise exception 'Student profile is missing.' using errcode = 'P0002'; end if;
+    return jsonb_build_object('awarded', true, 'xp_awarded', v_points, 'total_xp', v_total);
+  end if;
+  select xp into v_total from public.profiles where id = v_user_id;
+  return jsonb_build_object('awarded', false, 'xp_awarded', 0, 'total_xp', coalesce(v_total, 0));
+end;
+$$;
+revoke all on function public.complete_lesson(text, text) from public, anon;
+grant execute on function public.complete_lesson(text, text) to authenticated;
+
+comment on table public.profiles is 'Private student profiles; only opted-in usernames and XP are shown publicly.';
+comment on table public.lesson_completions is 'Private, owner-readable lesson completion history.';
+comment on table private.lesson_challenges is 'Authoritative challenge outputs; never exposed to the browser API.';
+comment on function public.complete_lesson(text, text) is 'Validates known challenge output and awards XP once per authenticated student and activity.';
+notify pgrst, 'reload schema';
+ then raise exception 'Username must be 3 to 20 letters, numbers, or underscores.' using errcode = '22023'; end if;
+  insert into public.profiles (id, username, xp, leaderboard_public)
+  values (v_user_id, p_username, 0, coalesce(p_leaderboard_public, false))
+  on conflict (id) do update set username = excluded.username, leaderboard_public = excluded.leaderboard_public
+  returning * into v_profile;
+  return jsonb_build_object('id',v_profile.id,'username',v_profile.username,'xp',v_profile.xp,'leaderboard_public',v_profile.leaderboard_public);
+end; $;
+revoke all on function public.save_profile(text, boolean) from public, anon;
+grant execute on function public.save_profile(text, boolean) to authenticated;
+
 create or replace function public.complete_lesson(p_lesson_id text, p_output text)
 returns jsonb
 language plpgsql

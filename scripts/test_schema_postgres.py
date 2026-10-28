@@ -43,6 +43,12 @@ b = "22222222-2222-4222-8222-222222222222"
 psql(f"""INSERT INTO auth.users(id,raw_user_meta_data) VALUES
 ('{a}', '{{"username":"public_student","leaderboard_public":true}}'::jsonb),
 ('{b}', '{{"username":"private_student","leaderboard_public":false}}'::jsonb);""")
+profile, _ = psql(f'''SET ROLE authenticated;
+SET request.jwt.claim.sub = '{a}';
+SELECT public.save_profile('renamed_student', true)::text;
+RESET ROLE;''')
+profile_json = __import__('json').loads(profile)
+assert profile_json['id'] == a and profile_json['username'] == 'renamed_student' and profile_json['xp'] == 0 and profile_json['leaderboard_public'] is True, f'Profile save failed: {profile_json}'
 rpc, _ = psql(f"""SET ROLE authenticated;
 SET request.jwt.claim.sub = '{a}';
 SELECT public.complete_lesson('c01-l01','I wrote my first line!')->>'awarded';
@@ -57,12 +63,13 @@ SELECT count(*) FROM public.lesson_completions WHERE user_id = '{b}';
 RESET ROLE;""")
 assert own_data.splitlines() == ["1", "0"], f"RLS cross-account test failed: {own_data}"
 leaderboard, _ = psql("SET ROLE anon; SELECT username FROM public.leaderboard ORDER BY username; RESET ROLE;")
-assert leaderboard.splitlines() == ["public_student"], f"Opt-in leaderboard filter failed: {leaderboard}"
+assert leaderboard.splitlines() == ["renamed_student"], f"Opt-in leaderboard filter failed: {leaderboard}"
 _, denied = psql(f"SET ROLE authenticated; SET request.jwt.claim.sub = '{a}'; UPDATE public.profiles SET xp = 999 WHERE id = '{a}';", expect_success=False)
 assert "permission denied" in denied.lower(), f"Direct XP update wasn't denied: {denied}"
 _, wrong_output = psql(f"SET ROLE authenticated; SET request.jwt.claim.sub = '{a}'; SELECT public.complete_lesson('c01-l02','not the expected answer');", expect_success=False)
 assert "output does not match" in wrong_output.lower(), f"Wrong output wasn't rejected: {wrong_output}"
 print("PASS: schema applies and re-runs cleanly; 68 seeds present")
 print("PASS: RLS isolates accounts; public leaderboard reveals only opted-in usernames")
+print("PASS: profile-save RPC safely updates the signed-in student's profile without accepting XP")
 print("PASS: browser roles cannot update XP or call XP RPC anonymously")
 print("PASS: correct challenge awards XP once; incorrect output is rejected")

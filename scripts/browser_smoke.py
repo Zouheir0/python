@@ -1,13 +1,36 @@
 #!/usr/bin/env python3
 """Smoke-test the app with a real Chromium browser and real Pyodide CDN runtime."""
 from __future__ import annotations
-import functools, http.server, os, socketserver, threading
+import functools, http.server, os, socketserver, threading, time
 from pathlib import Path
 from playwright.sync_api import Error as PlaywrightError, sync_playwright
 ROOT = Path(__file__).resolve().parents[1]
 
 class QuietHandler(http.server.SimpleHTTPRequestHandler):
     def log_message(self, _format, *args): pass
+
+def wait_for_text(locator, text, timeout=90):
+    deadline = time.monotonic() + timeout
+    last = ''
+    while time.monotonic() < deadline:
+        try:
+            last = locator.inner_text(timeout=500)
+            if text in last: return last
+        except Exception: pass
+        time.sleep(0.25)
+    raise AssertionError(f'Timed out waiting for {text!r}; last text was {last!r}')
+
+def wait_for_exact_text(locator, text, timeout=90):
+    deadline = time.monotonic() + timeout
+    last = ''
+    while time.monotonic() < deadline:
+        try:
+            last = locator.inner_text(timeout=500).strip()
+            if last == text: return last
+        except Exception: pass
+        time.sleep(0.25)
+    raise AssertionError(f'Timed out waiting for {text!r}; last text was {last!r}')
+
 
 def main():
     handler = functools.partial(QuietHandler, directory=str(ROOT))
@@ -37,27 +60,27 @@ def main():
                 assert "Python Path" in page.title()
                 page.locator('button[data-action="open-activity"]').first.click()
                 page.get_by_role("button", name="Run example").click()
-                page.wait_for_function("document.querySelector('#example-console')?.textContent.includes('I wrote my first line!')", timeout=90_000)
+                wait_for_text(page.locator("#example-console"), "I wrote my first line!")
                 page.locator('button.nav-button[data-view="sandbox"]').click()
                 page.locator("#sandbox-code").fill("print(2 + 5)")
                 page.locator('button[data-action="sandbox-run"]').click()
-                page.wait_for_function("document.querySelector('#sandbox-status')?.textContent === 'FINISHED'", timeout=90_000)
+                wait_for_exact_text(page.locator("#sandbox-status"), "FINISHED")
                 assert page.locator("#sandbox-output").inner_text().strip() == "7"
                 page.locator("#sandbox-code").fill('print("2 + 5")')
                 page.locator('button[data-action="sandbox-run"]').click()
-                page.wait_for_function("document.querySelector('#sandbox-status')?.textContent === 'FINISHED'", timeout=90_000)
+                wait_for_exact_text(page.locator("#sandbox-status"), "FINISHED")
                 assert page.locator("#sandbox-output").inner_text().strip() == "2 + 5"
                 page.locator("#sandbox-code").fill('Print("hello")')
                 page.locator('button[data-action="sandbox-run"]').click()
-                page.wait_for_function("document.querySelector('#sandbox-status')?.textContent === 'ERROR'", timeout=90_000)
+                wait_for_exact_text(page.locator("#sandbox-status"), "ERROR")
                 assert "NameError" in page.locator("#sandbox-output").inner_text()
                 page.locator("#sandbox-code").fill("while True: pass")
                 page.locator('button[data-action="sandbox-run"]').click()
-                page.wait_for_function("document.querySelector('#sandbox-status')?.textContent === 'ERROR'", timeout=15_000)
+                wait_for_exact_text(page.locator("#sandbox-status"), "ERROR", timeout=15)
                 assert "timed out" in page.locator("#sandbox-output").inner_text().lower()
                 page.locator("#sandbox-code").fill('print("runtime still responsive")')
                 page.locator('button[data-action="sandbox-run"]').click()
-                page.wait_for_function("document.querySelector('#sandbox-status')?.textContent === 'FINISHED'", timeout=90_000)
+                wait_for_exact_text(page.locator("#sandbox-status"), "FINISHED")
                 assert "runtime still responsive" in page.locator("#sandbox-output").inner_text()
                 page.locator('button.nav-button[data-view="account"]').click()
                 assert "Sign in and sync progress" in page.locator("#app").inner_text()

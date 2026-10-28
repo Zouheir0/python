@@ -37,7 +37,7 @@ GitHub Pages is static hosting. It does not provide a secure private database, p
 The backend is optional until you want accounts and cross-device progress. Do not announce the public leaderboard as live until these steps and the security tests pass.
 
 1. Create a Supabase project at <https://supabase.com/dashboard>.
-2. Open **SQL Editor** and run the complete `supabase/schema.sql` file from this repository. It creates profiles, private lesson records, hidden database-side challenge output records, row-level security policies, the signup trigger, a constrained leaderboard view, and the XP awarding function. Review the SQL before executing it.
+2. Open **SQL Editor** and run the complete latest `supabase/schema.sql` file from this repository. It creates or repairs profiles, a secure profile-save RPC, private lesson records, hidden challenge outputs, row-level security policies, the signup trigger, the opt-in leaderboard view, and XP-awarding rules. Re-run this file after schema updates. Review the SQL before executing it.
 3. This repository's `config.js` is already set to the Supabase project URL and publishable key previously supplied for Python Path. Confirm both values in your Supabase **Project Settings / API** page. If you use a different project, update those two constants. The publishable/anon key is public by design only when row-level security and grants are correct:
 
    ```js
@@ -67,7 +67,7 @@ The database prevents a visitor from directly setting arbitrary XP, prevents ano
 
 Pyodide is a WebAssembly build of CPython. This app loads a pinned Pyodide release in a module Web Worker so student code runs separately from the page's UI. The worker is terminated after six seconds. That protects the interface from simple infinite loops, but it is not a security boundary for running confidential or hostile workloads. Student code and input are processed in the browser and are not intentionally sent to Python Path's Supabase database. Never type passwords or personal information into the editor.
 
-The app also loads the Supabase JavaScript SDK from jsDelivr at a pinned version. Both the runtime and SDK require a network connection. For higher supply-chain control, self-host reviewed copies of the runtime and SDK and update them through a reviewed dependency process.
+The app runs Pyodide through a classic same-origin worker and a pinned runtime CDN URL, and loads the Supabase JavaScript SDK from jsDelivr at a pinned version. Both runtime and SDK require a network connection. For higher supply-chain control, self-host reviewed copies of the runtime and SDK and update them through a reviewed dependency process.
 
 ## Child privacy and public launch
 
